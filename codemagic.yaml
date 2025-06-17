@@ -16,6 +16,8 @@ workflows:
       vars:
         PROJECT_DIR: "apps/mobile"
         NODE_OPTIONS: "--max_old_space_size=4096"
+        NODE_ENV: "production"
+        EXPO_NO_DOTENV: "1"
         
     triggering:
       events:
@@ -34,18 +36,27 @@ workflows:
           pwd
           ls -la
 
-      # 2. Install JS dependencies
+      # 2. Clean npm cache and install dependencies
       - name: Install npm dependencies
         script: |
           cd "$PROJECT_DIR"
-          # Remove problematic package-lock.json and reinstall
-          rm -f package-lock.json
-          npm install --legacy-peer-deps
+          # Clean npm cache to avoid issues
+          npm cache clean --force
+          # Remove problematic package-lock.json and node_modules
+          rm -rf package-lock.json node_modules
+          # Install dependencies with proper flags
+          npm install --legacy-peer-deps --force
+          # Verify metro is installed
+          npm ls metro || echo "Metro not found, installing explicitly..."
+          # Install metro explicitly if needed
+          npm install metro@~0.81.0 --save-dev --legacy-peer-deps
           
       # 3. Install Expo CLI globally
       - name: Install Expo CLI
         script: |
           npm install -g @expo/cli@latest
+          # Verify installation
+          npx expo --version
 
       # 4. Generate the native Android project (creates android/ folder)
       - name: Expo prebuild (Android)
@@ -53,6 +64,9 @@ workflows:
           cd "$PROJECT_DIR"
           # Clear any existing android directory
           rm -rf android
+          # Set environment variables for prebuild
+          export NODE_ENV=production
+          export EXPO_NO_DOTENV=1
           # Generate native Android project
           npx expo prebuild --platform android --non-interactive --no-install --clean
           
@@ -89,10 +103,13 @@ workflows:
       - name: Compile Android APK
         script: |
           cd "$PROJECT_DIR"/android
+          # Set environment variables for Android build
+          export NODE_ENV=production
+          export EXPO_NO_DOTENV=1
           # Make gradlew executable
           chmod +x ./gradlew
-          # Build the APK
-          ./gradlew assembleRelease --warning-mode all --no-daemon --stacktrace
+          # Build the APK with more verbose output
+          ./gradlew assembleRelease --warning-mode all --no-daemon --stacktrace --info
 
     artifacts:
       # Collect APK(s) produced during the build
