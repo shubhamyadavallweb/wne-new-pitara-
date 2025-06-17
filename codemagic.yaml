@@ -52,11 +52,6 @@ workflows:
       # Path is relative to the repository root
       - apps/mobile/android/app/build/outputs/**/*.apk
 
-    publishing:
-      email:
-        recipients:
-          - $CM_EMAIL          # Define in Codemagic -> Email notifications
-
   expo-android:
     # Builds the Expo Router app under newpitara/apps/mobile and outputs an unsigned APK
     name: NewPitara – Android APK (Expo)
@@ -101,7 +96,5 @@ workflows:
       # Collect APK(s) produced during the build
       - "$PROJECT_DIR/android/app/build/outputs/**/*.apk"
 
-    publishing:
-      email:
-        recipients:
-          - "your-email@example.com" 
+    # Remove email publishing to avoid validation errors
+    # You can configure email notifications in Codemagic UI instead 
