@@ -33,7 +33,10 @@ workflows:
       - name: Install dependencies
         script: |
           cd "$PROJECT_DIR"
-          npm ci
+          # Remove problematic package-lock.json and reinstall
+          rm -f package-lock.json
+          npm install --legacy-peer-deps
+          # Alternative: npm ci --legacy-peer-deps --force
 
       - name: Decode Android keystore (optional)
         script: |
@@ -78,7 +81,9 @@ workflows:
       - name: Install npm dependencies
         script: |
           cd "$PROJECT_DIR"
-          npm ci --legacy-peer-deps
+          # Remove problematic package-lock.json and reinstall
+          rm -f package-lock.json
+          npm install --legacy-peer-deps
 
       # 2. Generate the native Android project (creates android/ folder)
       - name: Expo prebuild (Android)
