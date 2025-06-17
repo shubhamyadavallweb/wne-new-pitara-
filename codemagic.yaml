@@ -1,72 +1,21 @@
 workflows:
-  android-apk:
-    name: "React Native • Android APK"
-    max_build_duration: 120
-    instance_type: mac_mini_m2
-
-    environment:
-      # Tools
-      node: 20.10.0          # Match your local Node version
-      java: 17               # Required for modern Android Gradle plugin
-      
-      # Environment variables that will be provided securely in Codemagic UI
-      groups:
-        - android_keystore   # CM_KEYSTORE, CM_KEYSTORE_FILENAME, CM_KEYSTORE_PASSWORD, CM_KEY_PASSWORD, CM_KEY_ALIAS
-
-      vars:
-        NODE_OPTIONS: "--max_old_space_size=4096"
-        PROJECT_DIR: "apps/mobile"
-
-    triggering:
-      events:
-        - push
-      branch_patterns:
-        - pattern: main
-          include: true
-      cancel_previous_builds: true
-
-    scripts:
-      - name: Change to project directory
-        script: |
-          cd "$PROJECT_DIR"
-
-      - name: Install dependencies
-        script: |
-          cd "$PROJECT_DIR"
-          # Remove problematic package-lock.json and reinstall
-          rm -f package-lock.json
-          npm install --legacy-peer-deps
-          # Alternative: npm ci --legacy-peer-deps --force
-
-      - name: Decode Android keystore (optional)
-        script: |
-          cd "$PROJECT_DIR"
-          # Only runs if keystore variables are set in the android_keystore group
-          if [ -n "$CM_KEYSTORE" ]; then
-            echo "$CM_KEYSTORE" | base64 --decode > android/app/$CM_KEYSTORE_FILENAME
-          fi
-
-      - name: Build release APK
-        script: |
-          cd "$PROJECT_DIR"/android
-          ./gradlew assembleRelease --no-daemon --stacktrace
-
-    artifacts:
-      # Path is relative to the repository root
-      - apps/mobile/android/app/build/outputs/**/*.apk
-
   expo-android:
     # Builds the Expo Router app under newpitara/apps/mobile and outputs an unsigned APK
     name: NewPitara – Android APK (Expo)
-    max_build_duration: 60
+    max_build_duration: 90
     instance_type: mac_mini_m2
     
     environment:
       node: "18.18.0"     # Expo SDK 52 supports Node 18
       java: "17"          # Required by modern Android Gradle Plugin
       
+      # Environment variables that will be provided securely in Codemagic UI
+      groups:
+        - android_keystore   # CM_KEYSTORE, CM_KEYSTORE_FILENAME, CM_KEYSTORE_PASSWORD, CM_KEY_PASSWORD, CM_KEY_ALIAS
+      
       vars:
         PROJECT_DIR: "apps/mobile"
+        NODE_OPTIONS: "--max_old_space_size=4096"
         
     triggering:
       events:
@@ -75,31 +24,78 @@ workflows:
       branch_patterns:
         - pattern: "main"
           include: true
+      cancel_previous_builds: true
           
     scripts:
-      # 1. Install JS dependencies
+      # 1. Change to project directory
+      - name: Change to project directory
+        script: |
+          cd "$PROJECT_DIR"
+          pwd
+          ls -la
+
+      # 2. Install JS dependencies
       - name: Install npm dependencies
         script: |
           cd "$PROJECT_DIR"
           # Remove problematic package-lock.json and reinstall
           rm -f package-lock.json
           npm install --legacy-peer-deps
+          
+      # 3. Install Expo CLI globally
+      - name: Install Expo CLI
+        script: |
+          npm install -g @expo/cli@latest
 
-      # 2. Generate the native Android project (creates android/ folder)
+      # 4. Generate the native Android project (creates android/ folder)
       - name: Expo prebuild (Android)
         script: |
           cd "$PROJECT_DIR"
-          npx expo prebuild --platform android --non-interactive --no-install
+          # Clear any existing android directory
+          rm -rf android
+          # Generate native Android project
+          npx expo prebuild --platform android --non-interactive --no-install --clean
+          
+      # 5. Verify Android project was created
+      - name: Verify Android project
+        script: |
+          cd "$PROJECT_DIR"
+          if [ ! -d "android" ]; then
+            echo "❌ Android directory not created by expo prebuild"
+            exit 1
+          fi
+          if [ ! -f "android/gradlew" ]; then
+            echo "❌ gradlew not found in android directory"
+            exit 1
+          fi
+          echo "✅ Android project structure verified"
+          ls -la android/
 
-      # 3. Compile a release APK (unsigned). Switch to assembleDebug for debug builds
+      # 6. Decode Android keystore (optional)
+      - name: Decode Android keystore (optional)
+        script: |
+          cd "$PROJECT_DIR"
+          # Only runs if keystore variables are set in the android_keystore group
+          if [ -n "$CM_KEYSTORE" ]; then
+            echo "📱 Setting up Android keystore..."
+            mkdir -p android/app
+            echo "$CM_KEYSTORE" | base64 --decode > android/app/$CM_KEYSTORE_FILENAME
+            echo "✅ Android keystore configured"
+          else
+            echo "ℹ️ No keystore configured - building unsigned APK"
+          fi
+
+      # 7. Compile a release APK
       - name: Compile Android APK
         script: |
           cd "$PROJECT_DIR"/android
-          ./gradlew assembleRelease --warning-mode all --no-daemon
+          # Make gradlew executable
+          chmod +x ./gradlew
+          # Build the APK
+          ./gradlew assembleRelease --warning-mode all --no-daemon --stacktrace
 
     artifacts:
       # Collect APK(s) produced during the build
       - "$PROJECT_DIR/android/app/build/outputs/**/*.apk"
 
-    # Remove email publishing to avoid validation errors
-    # You can configure email notifications in Codemagic UI instead 
+    # Optional: You can configure email notifications in Codemagic UI instead of here 
