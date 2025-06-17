@@ -1,0 +1,52 @@
+{
+  "expo": {
+    "name": "Pitara Mobile",
+    "slug": "pitara-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/Assets/pitaralogo.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/logotype.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pitara.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/Assets/pitaralogo.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.pitara.mobile",
+      "permissions": [
+        "NOTIFICATIONS",
+        "WAKE_LOCK",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ],
+      "versionCode": 3
+    },
+    "web": {
+      "favicon": "./assets/Assets/pitaralogo.png"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "scheme": "pitara",
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "1f53a5fe-e196-439b-8bae-08d80e8c54af"
+      }
+    },
+    "owner": "pmp16"
+  }
+}
