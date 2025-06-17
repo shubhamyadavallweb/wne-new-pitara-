@@ -2,7 +2,7 @@ workflows:
   android-apk:
     name: "React Native • Android APK"
     max_build_duration: 120
-    instance_type: mac_mini_m1
+    instance_type: mac_mini_m2
 
     environment:
       # The React Native app lives in apps/mobile
@@ -66,7 +66,8 @@ workflows:
         PROJECT_DIR: "apps/mobile"
       node: "18.18.0"     # Expo SDK 52 supports Node 18
       java: "17"          # Required by modern Android Gradle Plugin
-      android: true        # Pre-installed Android SDK & NDK on Codemagic image
+      android:
+        sdk: 34            # Use SDK that ships with default image
       yarn_cache: false
     triggering:
       events:
