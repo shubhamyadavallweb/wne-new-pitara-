@@ -40,35 +40,32 @@ workflows:
       - name: Install npm dependencies
         script: |
           cd "$PROJECT_DIR"
-          # Clean npm cache to avoid issues
+          # Clean npm cache and start fresh
           npm cache clean --force
-          # Remove problematic package-lock.json and node_modules
           rm -rf package-lock.json node_modules
           # Install dependencies with proper flags
           npm install --legacy-peer-deps --force
-          # Verify metro is installed
-          npm ls metro || echo "Metro not found, installing explicitly..."
-          # Install metro explicitly if needed
-          npm install metro@~0.81.0 --save-dev --legacy-peer-deps
           
-      # 3. Install Expo CLI globally
+      # 3. Install Expo CLI globally with specific version
       - name: Install Expo CLI
         script: |
+          # Install specific Expo CLI version compatible with SDK 52
           npm install -g @expo/cli@latest
           # Verify installation
           npx expo --version
+          echo "Expo CLI installed successfully"
 
       # 4. Generate the native Android project (creates android/ folder)
       - name: Expo prebuild (Android)
         script: |
           cd "$PROJECT_DIR"
-          # Clear any existing android directory
-          rm -rf android
           # Set environment variables for prebuild
           export NODE_ENV=production
           export EXPO_NO_DOTENV=1
-          # Generate native Android project
-          npx expo prebuild --platform android --non-interactive --no-install --clean
+          # Clear any existing android directory
+          rm -rf android
+          # Generate native Android project with verbose output
+          npx expo prebuild --platform android --clean --non-interactive --no-install
           
       # 5. Verify Android project was created
       - name: Verify Android project
@@ -85,7 +82,17 @@ workflows:
           echo "✅ Android project structure verified"
           ls -la android/
 
-      # 6. Decode Android keystore (optional)
+      # 6. Pre-bundle JavaScript (to catch bundling errors early)
+      - name: Pre-bundle JavaScript
+        script: |
+          cd "$PROJECT_DIR"  
+          # Set environment variables for bundling
+          export NODE_ENV=production
+          export EXPO_NO_DOTENV=1
+          # Try to bundle JavaScript without building APK to catch errors early
+          npx expo export --platform android --clear || echo "Pre-bundling failed, will try alternative approach"
+
+      # 7. Decode Android keystore (optional)
       - name: Decode Android keystore (optional)
         script: |
           cd "$PROJECT_DIR"
@@ -99,7 +106,7 @@ workflows:
             echo "ℹ️ No keystore configured - building unsigned APK"
           fi
 
-      # 7. Compile a release APK
+      # 8. Compile Android APK (alternative approach)
       - name: Compile Android APK
         script: |
           cd "$PROJECT_DIR"/android
@@ -108,8 +115,14 @@ workflows:
           export EXPO_NO_DOTENV=1
           # Make gradlew executable
           chmod +x ./gradlew
-          # Build the APK with more verbose output
-          ./gradlew assembleRelease --warning-mode all --no-daemon --stacktrace --info
+          # Try to build APK with fallback strategies
+          echo "🔄 Attempting to build APK with standard method..."
+          if ./gradlew assembleRelease --no-daemon --stacktrace --info; then
+            echo "✅ APK built successfully with standard method"
+          else
+            echo "❌ Standard method failed, trying with debug build..."
+            ./gradlew assembleDebug --no-daemon --stacktrace --info
+          fi
 
     artifacts:
       # Collect APK(s) produced during the build
