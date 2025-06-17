@@ -5,23 +5,17 @@ workflows:
     instance_type: mac_mini_m2
 
     environment:
-      # The React Native app lives in apps/mobile
-      working_directory: apps/mobile
-
       # Tools
       node: 20.10.0          # Match your local Node version
       java: 17               # Required for modern Android Gradle plugin
-      android:
-        sdk: 34             # API level
-        build_tools_version: "34.0.0"
-        ndk: 23.1.7779620
-
+      
       # Environment variables that will be provided securely in Codemagic UI
       groups:
         - android_keystore   # CM_KEYSTORE, CM_KEYSTORE_FILENAME, CM_KEYSTORE_PASSWORD, CM_KEY_PASSWORD, CM_KEY_ALIAS
 
       vars:
         NODE_OPTIONS: "--max_old_space_size=4096"
+        PROJECT_DIR: "apps/mobile"
 
     triggering:
       events:
@@ -32,12 +26,18 @@ workflows:
       cancel_previous_builds: true
 
     scripts:
+      - name: Change to project directory
+        script: |
+          cd "$PROJECT_DIR"
+
       - name: Install dependencies
         script: |
+          cd "$PROJECT_DIR"
           npm ci
 
       - name: Decode Android keystore (optional)
         script: |
+          cd "$PROJECT_DIR"
           # Only runs if keystore variables are set in the android_keystore group
           if [ -n "$CM_KEYSTORE" ]; then
             echo "$CM_KEYSTORE" | base64 --decode > android/app/$CM_KEYSTORE_FILENAME
@@ -45,7 +45,7 @@ workflows:
 
       - name: Build release APK
         script: |
-          cd android
+          cd "$PROJECT_DIR"/android
           ./gradlew assembleRelease --no-daemon --stacktrace
 
     artifacts:
@@ -61,14 +61,15 @@ workflows:
     # Builds the Expo Router app under newpitara/apps/mobile and outputs an unsigned APK
     name: NewPitara – Android APK (Expo)
     max_build_duration: 60
+    instance_type: mac_mini_m2
+    
     environment:
-      vars:
-        PROJECT_DIR: "apps/mobile"
       node: "18.18.0"     # Expo SDK 52 supports Node 18
       java: "17"          # Required by modern Android Gradle Plugin
-      android:
-        sdk: 34            # Use SDK that ships with default image
-      yarn_cache: false
+      
+      vars:
+        PROJECT_DIR: "apps/mobile"
+        
     triggering:
       events:
         - push
@@ -76,6 +77,7 @@ workflows:
       branch_patterns:
         - pattern: "main"
           include: true
+          
     scripts:
       # 1. Install JS dependencies
       - name: Install npm dependencies
