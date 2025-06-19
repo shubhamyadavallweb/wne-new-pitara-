@@ -1,4 +1,4 @@
-name: Build Android App Bundle
+name: Build Android APK
 
 on:
   push:
@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-android-bundle:
-    name: Build Release AAB
+  build-android-apk:
+    name: Build Release APK
     runs-on: ubuntu-latest
 
     steps:
@@ -42,13 +42,13 @@ jobs:
       - name: Prebuild native Android project via Expo
         run: npx expo prebuild --platform android --non-interactive --no-install --project-root apps/mobile
 
-      - name: Build release AAB with Gradle
+      - name: Build release APK with Gradle
         run: |
           cd apps/mobile/android
-          ./gradlew bundleRelease --stacktrace --no-daemon
+          ./gradlew assembleRelease --stacktrace --no-daemon
 
-      - name: Upload AAB artifact
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v3
         with:
-          name: app-release-aab
-          path: apps/mobile/android/app/build/outputs/bundle/release/app-release.aab 
+          name: app-release-apk
+          path: apps/mobile/android/app/build/outputs/apk/release/app-release.apk 
