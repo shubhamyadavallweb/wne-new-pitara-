@@ -41,7 +41,24 @@
     },
     "plugins": [
       "expo-router",
-      "expo-video"
+      "expo-video",
+      ["expo-build-properties", {
+        "android": {
+          "compileSdkVersion": 34,
+          "targetSdkVersion": 34,
+          "buildToolsVersion": "34.0.0",
+          "kotlinVersion": "1.8.10",
+          "packagingOptions": {
+            "exclude": [
+              "META-INF/AL2.0",
+              "META-INF/LGPL2.1",
+              "META-INF/DEPENDENCIES",
+              "META-INF/LICENSE*",
+              "META-INF/NOTICE*"
+            ]
+          }
+        }
+      }]
     ],
     "extra": {
       "router": {
