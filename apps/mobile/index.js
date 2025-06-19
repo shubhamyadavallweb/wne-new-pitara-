@@ -1,10 +1,12 @@
+// This is the main entry point
+import 'react-native-url-polyfill/auto';
+import './global.css';
 import { registerRootComponent } from 'expo';
-import { ExpoRoot } from 'expo-router';
+import App from './App.js';
+import * as WebBrowser from 'expo-web-browser';
 
-// Must be exported or Fast Refresh won't update the context
-export function App() {
-  const ctx = require.context('./app');
-  return <ExpoRoot context={ctx} />;
-}
+// Ensure any pending auth sessions are completed and close the browser tab
+WebBrowser.maybeCompleteAuthSession();
 
+// Register the main component
 registerRootComponent(App); 

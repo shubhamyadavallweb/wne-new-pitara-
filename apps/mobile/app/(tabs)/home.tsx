@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { 
   View, 
   Text, 
@@ -8,15 +8,24 @@ import {
   Image, 
   Alert, 
   Modal, 
-  SafeAreaView, 
   ActivityIndicator,
-  Dimensions 
+  Dimensions
 } from 'react-native';
-import { VideoPlayer } from '../../components/VideoPlayer';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import VideoPlayer from '../../components/VideoPlayer';
 import { useSeriesData } from '@pitara/hooks';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
+import { AuthContext } from '../_layout';
+import { supabase } from '@pitara/supabase';
+import { StatusBar } from 'expo-status-bar';
 
-const { width: screenWidth } = Dimensions.get('window');
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const FEATURED_HEIGHT = Math.round(screenHeight * 0.55);
+
+// Local assets
+const logoImg = require('../../assets/Assets/pitaralogo.png');
 
 interface Episode {
   id: string;
@@ -49,6 +58,10 @@ export default function Home() {
   
   const [selectedVideoUrl, setSelectedVideoUrl] = useState<string | null>(null);
   const [selectedVideoTitle, setSelectedVideoTitle] = useState<string>('');
+  const [activeSlide, setActiveSlide] = useState(0);
+  const { session } = useContext(AuthContext);
+  const [subscription, setSubscription] = useState<any>(null);
+  const [loadingSubscription, setLoadingSubscription] = useState(true);
 
   const playVideo = (videoUrl: string, title: string) => {
     setSelectedVideoUrl(videoUrl);
@@ -61,14 +74,43 @@ export default function Home() {
   };
 
   const navigateToSeries = (seriesId: string) => {
-    // Navigation will be implemented when expo-router is properly configured
-    console.log('Navigate to series:', seriesId);
+    router.push(`/series/${seriesId}`);
   };
 
-  if (loading) {
+  useEffect(() => {
+    async function fetchSubscription() {
+      if (session?.user) {
+        setLoadingSubscription(true);
+        try {
+          const { data, error } = await supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .single();
+          
+          if (error) {
+            console.error('Error fetching subscription:', error);
+          } else {
+            setSubscription(data);
+          }
+        } catch (error) {
+          console.error('Unexpected error:', error);
+        } finally {
+          setLoadingSubscription(false);
+        }
+      } else {
+        // No signed-in user; skip subscription lookup
+        setLoadingSubscription(false);
+      }
+    }
+    
+    fetchSubscription();
+  }, [session]);
+
+  if (loading || loadingSubscription) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3B82F6" />
+        <ActivityIndicator size="large" color="#ff6b00" />
         <Text style={styles.loadingText}>Loading content...</Text>
       </SafeAreaView>
     );
@@ -86,6 +128,9 @@ export default function Home() {
       </SafeAreaView>
     );
   }
+
+  // Check subscription status
+  const hasActiveSubscription = subscription?.status === 'active';
 
   const renderSeriesCard = (series: Series, onPress: () => void) => (
     <TouchableOpacity key={series.id} style={styles.seriesCard} onPress={onPress}>
@@ -112,35 +157,47 @@ export default function Home() {
 
     return (
       <View style={styles.featuredSection}>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
           pagingEnabled
           style={styles.featuredCarousel}
+          onMomentumScrollEnd={e => {
+            const index = Math.round(
+              e.nativeEvent.contentOffset.x / screenWidth,
+            );
+            setActiveSlide(index);
+          }}
         >
           {featuredSeries.map((series) => (
             <TouchableOpacity
               key={series.id}
               style={styles.featuredCard}
               onPress={() => navigateToSeries(series.id)}
+              activeOpacity={0.9}
             >
               <Image source={{ uri: series.image_url }} style={styles.featuredImage} />
+              <LinearGradient
+                colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.7)"]}
+                style={styles.gradientOverlay}
+              />
               <View style={styles.featuredOverlay}>
                 <Text style={styles.featuredTitle}>{series.title}</Text>
                 <Text style={styles.featuredDescription} numberOfLines={3}>
                   {series.description}
                 </Text>
                 <View style={styles.featuredActions}>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.playButton}
                     onPress={() => {
                       if (series.episodes.length > 0) {
                         playVideo(
-                          series.episodes[0].video_url, 
-                          `${series.title} - Episode 1`
+                          series.episodes[0].video_url,
+                          `${series.title} - Episode 1`,
                         );
                       }
                     }}
+                    activeOpacity={0.9}
                   >
                     <Ionicons name="play" size={20} color="#fff" />
                     <Text style={styles.playButtonText}>Play</Text>
@@ -150,6 +207,18 @@ export default function Home() {
             </TouchableOpacity>
           ))}
         </ScrollView>
+        {/* Dots */}
+        <View style={styles.dotsContainer}>
+          {featuredSeries.map((_, idx) => (
+            <View
+              key={idx}
+              style={[
+                styles.dot,
+                { opacity: activeSlide === idx ? 1 : 0.3 },
+              ]}
+            />
+          ))}
+        </View>
       </View>
     );
   };
@@ -171,23 +240,21 @@ export default function Home() {
 
   return (
     <>
+      {/* Transparent StatusBar for this screen */}
+      <StatusBar translucent backgroundColor="transparent" style="light" />
       <SafeAreaView style={styles.container}>
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          <View style={styles.header}>
-            <Text style={styles.welcomeTitle}>Welcome to Pitara</Text>
-            <Text style={styles.welcomeSubtitle}>Your favorite content awaits!</Text>
-          </View>
+        {/* Brand Header */}
+        <View style={styles.brandHeader}>
+          <Image source={logoImg} style={styles.logo} resizeMode="contain" />
+          <Text style={styles.brandText}>Pitara</Text>
+        </View>
 
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          {/* Removed welcome header for cleaner Netflix-style look */}
           {renderFeaturedCarousel()}
           {renderSeriesSection('Latest Releases', latestSeries)}
           {renderSeriesSection('Recommended for You', recommendedSeries)}
           {renderSeriesSection('Popular Series', popularSeries)}
-
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              Content updates automatically from admin portal
-            </Text>
-          </View>
         </ScrollView>
       </SafeAreaView>
 
@@ -196,11 +263,13 @@ export default function Home() {
         visible={selectedVideoUrl !== null}
         presentationStyle="overFullScreen"
         statusBarTranslucent
+        onRequestClose={closeVideo}
       >
         {selectedVideoUrl && (
           <VideoPlayer
             uri={selectedVideoUrl}
             title={selectedVideoTitle}
+            isVisible={true}
             onClose={closeVideo}
           />
         )}
@@ -263,30 +332,15 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  header: {
-    padding: 20,
-    paddingTop: 10,
-  },
-  welcomeTitle: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  welcomeSubtitle: {
-    fontSize: 16,
-    color: '#ccc',
-    marginBottom: 20,
-  },
   featuredSection: {
     marginBottom: 30,
   },
   featuredCarousel: {
-    height: 200,
+    height: FEATURED_HEIGHT,
   },
   featuredCard: {
     width: screenWidth,
-    height: 200,
+    height: FEATURED_HEIGHT,
     position: 'relative',
   },
   featuredImage: {
@@ -294,12 +348,19 @@ const styles = StyleSheet.create({
     height: '100%',
     resizeMode: 'cover',
   },
+  gradientOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    top: 0,
+    borderRadius: 0,
+  },
   featuredOverlay: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     padding: 20,
   },
   featuredTitle: {
@@ -376,14 +437,37 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontSize: 12,
   },
-  footer: {
-    padding: 20,
+  brandHeader: {
+    paddingVertical: 8,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 20,
+    justifyContent: 'flex-start',
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#1F2937',
+    backgroundColor: '#000',
+    paddingHorizontal: 12,
   },
-  footerText: {
-    color: '#6B7280',
-    fontSize: 12,
-    textAlign: 'center',
+  brandText: {
+    color: '#FFD700',
+    fontSize: 24,
+    fontFamily: 'serif',
+    fontWeight: '700',
+    marginLeft: 10,
+  },
+  logo: {
+    width: 48,
+    height: 48,
+  },
+  dotsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#ff6b00',
+    marginHorizontal: 4,
   },
 }); 

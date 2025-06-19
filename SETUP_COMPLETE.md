@@ -143,3 +143,64 @@ eas build --platform ios --profile preview
 **🎊 Congratulations! Your modern React Native app is ready for development!**
 
 The foundation is solid - now you can focus on building your amazing features! 🚀 
+
+# Nimbus SMS OTP Integration Setup Complete
+
+## What We've Accomplished
+
+1. **Enhanced Edge Functions**:
+   - Added proper phone number validation
+   - Implemented rate limiting (max 3 OTP requests per 2 minutes)
+   - Added error handling for SMS API responses
+   - Added better error messages for debugging
+
+2. **Security Improvements**:
+   - Created tracking for failed OTP attempts
+   - Added rate limiting to prevent brute force attacks
+   - Enhanced error responses with appropriate HTTP status codes
+   - Clear old OTPs after successful verification
+
+3. **Database Improvements**:
+   - Created `otp_attempts` table to track verification attempts
+   - Added `count_failed_otp_attempts` database function
+   - Set up proper table relationships and constraints
+
+4. **UI Enhancements**:
+   - Improved validation for phone number input
+   - Better error handling with user-friendly messages
+   - Added attempt counting on the client side
+   - Added autoFocus to OTP input
+
+5. **Configuration Updates**:
+   - Updated Supabase URL and anon key in app.json
+   - Updated app.config.js with proper configuration
+   - Fixed import paths in authentication screens
+   - Added proper environment variable access
+
+6. **Documentation**:
+   - Created comprehensive README with testing instructions
+   - Added production deployment guidance
+   - Documented security considerations
+
+7. **Dependencies**:
+   - Made sure all dependencies are properly installed
+   - Updated React Native Paper to version 5.11.1
+   - Set up for proper bundling
+
+## What's Still Needed
+
+1. **Update Service Role Key**:
+   - The `.env` file still contains the old project's service role key
+   - Update it with the new project's service role key (from Supabase dashboard)
+
+2. **Thorough Testing**:
+   - Verify OTP sending and receiving on physical devices
+   - Test error handling and rate limiting
+   - Verify user creation and authentication flow
+
+3. **Production Setup**:
+   - Set up Nimbus API credentials as environment variables in Supabase
+   - Configure EAS Build for app distribution
+   - Test on both Android and iOS platforms
+
+The integration is now complete and ready for testing. All core functionality is in place with enhanced security and error handling. 

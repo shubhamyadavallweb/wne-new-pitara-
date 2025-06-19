@@ -2,12 +2,11 @@
   "name": "@pitara/hooks",
   "version": "0.0.1",
   "private": true,
-  "main": "src/useAuth.tsx",
-  "types": "src/useAuth.tsx",
+  "main": "src/index.tsx",
+  "types": "src/index.tsx",
   "files": ["dist"],
   "dependencies": {
-    "@pitara/supabase": "file:../supabase",
-    "react": "^18.0.0"
+    "@pitara/supabase": "file:../supabase"
   },
   "peerDependencies": {
     "react": "^18.0.0",

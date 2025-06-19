@@ -187,4 +187,102 @@ Make sure to set production environment variables in:
 
 ## 📄 License
 
-This project is licensed under the MIT License. 
+This project is licensed under the MIT License.
+
+## Setup Complete
+
+The main integration of Nimbus SMS OTP authentication with Supabase is now complete. This includes:
+
+- ✅ Database tables in Supabase (otps, profiles, subscriptions)
+- ✅ Edge Functions for OTP sending and verification
+- ✅ OTP rate limiting and security improvements
+- ✅ UI screens for phone input and OTP verification
+
+## Testing OTP Authentication
+
+### Using the Mobile App
+
+To test the OTP authentication flow in the app:
+
+1. Start the application:
+   ```
+   cd apps/mobile && npx expo start
+   ```
+
+2. Use the Expo Go app on your device or an emulator to scan the QR code
+
+3. Test the authentication flow:
+   - Enter a valid phone number on the login screen
+   - You should receive an OTP via SMS (if using a real device)
+   - Enter the OTP in the verification screen
+   - Upon successful verification, you should be logged in and redirected to the home screen
+
+### Using Test Scripts
+
+For quicker testing of the OTP functionality without launching the full app, you can use the provided test scripts:
+
+1. Interactive Test (recommended):
+   ```
+   cd apps/mobile && node test-otp-interactive.js
+   ```
+   This script will:
+   - Prompt for a phone number (or take it as a command-line argument)
+   - Send the OTP to that number
+   - Prompt you to enter the received OTP
+   - Verify the OTP and show the authentication result
+
+2. Basic Test:
+   ```
+   cd apps/mobile && node test-otp.js +919876543210
+   ```
+   Replace `+919876543210` with your phone number. This script will send an OTP but won't verify it.
+
+## Nimbus SMS Integration
+
+The Nimbus SMS integration is configured with the following credentials:
+
+- **User ID:** Bigshotsnet
+- **Auth Key:** 921neeZLrw6PQ
+- **Sender ID:** BIGSHS
+- **Entity ID:** 1101571660000076361
+- **Template ID:** 1107170964588472006
+
+These credentials have been set as environment variables for the edge functions.
+
+## Production Deployment
+
+For production deployment, follow these steps:
+
+1. Update the Supabase service role key in `.env` file:
+   ```
+   SUPABASE_SERVICE_ROLE_KEY=your_new_project_service_role_key
+   ```
+
+2. Make sure the Nimbus SMS API credentials are set as environment variables in the Supabase Edge Function configuration.
+
+3. Configure EAS Build for app distribution:
+   ```
+   cd apps/mobile
+   eas build:configure
+   ```
+
+4. Create a production build:
+   ```
+   eas build --platform all --profile production
+   ```
+
+## Security Considerations
+
+The implementation includes these security measures:
+
+- Rate limiting for OTP requests (maximum 3 requests per 2 minutes)
+- OTP attempt tracking to prevent brute force attacks
+- Secure session management with Supabase
+- OTP expiry (5 minutes)
+- Proper error handling and user guidance
+
+## Additional Resources
+
+- [Supabase Documentation](https://supabase.com/docs)
+- [Expo Documentation](https://docs.expo.dev)
+- [Nimbus SMS API Documentation](https://nimbusit.com/docs) 

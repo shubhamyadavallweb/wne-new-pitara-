@@ -1,0 +1,27 @@
+name: Mobile Monorepo Path Setup
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  validate-mobile-config:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v3
+
+      # Ensure Node is available; use LTS
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Validate Expo config (monorepo path)
+        run: npx expo config --type public | cat
+
+      - name: Finish
+        run: echo "✅ Mobile app directory successfully targeted for future EAS builds." 

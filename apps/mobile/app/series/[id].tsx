@@ -5,6 +5,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  ImageBackground,
   StyleSheet,
   SafeAreaView,
   ActivityIndicator,
@@ -14,8 +15,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { supabase } from '@pitara/supabase';
-import { VideoPlayer } from '../../components/VideoPlayer';
+import VideoPlayer from '../../components/VideoPlayer';
 import { useDownloads, useAuth } from '@pitara/hooks';
+import { VIDEO_QUALITIES } from '../../constants';
+import { getEpisodeVideo } from '../../utils/bunnycdn';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Episode {
   id: string;
@@ -41,13 +46,18 @@ interface Series {
 export default function SeriesDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
-  const { addDownload } = useDownloads();
+  const { addDownload, startDownload } = useDownloads();
+  const insets = useSafeAreaInsets();
   
   const [series, setSeries] = useState<Series | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedVideoUrl, setSelectedVideoUrl] = useState<string | null>(null);
   const [selectedVideoTitle, setSelectedVideoTitle] = useState<string>('');
+  const [qualityModal, setQualityModal] = useState<{
+    mode: 'single' | 'all';
+    episode?: Episode;
+  } | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -109,27 +119,53 @@ export default function SeriesDetailScreen() {
     setSelectedVideoTitle('');
   };
 
-  const downloadEpisode = async (episode: Episode) => {
+  const openQualityPicker = (episode?: Episode) => {
+    setQualityModal({ mode: episode ? 'single' : 'all', episode });
+  };
+
+  const handleQualitySelect = async (quality: string) => {
     if (!series || !user) {
-      Alert.alert('Error', 'Please login to download episodes');
+      Alert.alert('Error', 'Please login to download');
       return;
     }
 
     try {
-      await addDownload({
-        title: episode.title,
-        seriesId: series.id,
-        seriesTitle: series.title,
-        episodeId: episode.id,
-        episodeNumber: episode.episode_number,
-        videoUrl: episode.video_url,
-        thumbnailUrl: episode.thumbnail_url,
-        quality: '1080p'
-      });
+      if (qualityModal?.mode === 'single' && qualityModal.episode) {
+        const ep = qualityModal.episode;
+        const url = getEpisodeVideo(series.id, ep.episode_number, quality);
+        const dl = await addDownload({
+          title: `${ep.title} (${quality})`,
+          seriesId: series.id,
+          seriesTitle: series.title,
+          episodeId: ep.id,
+          episodeNumber: ep.episode_number,
+          videoUrl: url,
+          thumbnailUrl: ep.thumbnail_url,
+          quality,
+        });
+        await startDownload(dl.id);
+      } else if (qualityModal?.mode === 'all') {
+        for (const ep of series.episodes) {
+          const url = getEpisodeVideo(series.id, ep.episode_number, quality);
+          const dl = await addDownload({
+            title: `${ep.title} (${quality})`,
+            seriesId: series.id,
+            seriesTitle: series.title,
+            episodeId: ep.id,
+            episodeNumber: ep.episode_number,
+            videoUrl: url,
+            thumbnailUrl: ep.thumbnail_url,
+            quality,
+          });
+          await startDownload(dl.id);
+        }
+      }
 
-      Alert.alert('Download Added', 'Episode added to download queue');
+      Alert.alert('Download Started', 'Your episodes are being downloaded');
     } catch (error) {
-      Alert.alert('Error', 'Failed to add episode to downloads');
+      Alert.alert('Error', 'Failed to start download');
+    } finally {
+      setQualityModal(null);
     }
   };
 
@@ -158,29 +194,63 @@ export default function SeriesDetailScreen() {
   return (
     <>
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
         </View>
 
         <ScrollView style={styles.content}>
-          {/* Series Header */}
-          <View style={styles.seriesHeader}>
-            <Image source={{ uri: series.image_url }} style={styles.seriesPoster} />
-            <View style={styles.seriesInfo}>
-              <Text style={styles.seriesTitle}>{series.title}</Text>
-              <Text style={styles.seriesGenre}>{series.genre}</Text>
-              <Text style={styles.episodeCount}>{series.episodes.length} Episodes</Text>
-              <Text style={styles.seriesDescription} numberOfLines={4}>
-                {series.description}
-              </Text>
-            </View>
+          {/* HERO BANNER */}
+          <View style={styles.heroContainer}>
+            <ImageBackground
+              source={{ uri: series.image_url }}
+              style={styles.heroImage}
+              imageStyle={styles.heroImageStyle}
+            >
+              <LinearGradient
+                colors={["rgba(0,0,0,0.0)", "rgba(0,0,0,0.85)"]}
+                style={styles.heroGradient}
+              >
+                <View style={styles.heroContent}>
+                  <Text style={styles.heroTitle}>{series.title}</Text>
+                  <Text style={styles.heroGenre}>{series.genre}</Text>
+                  <Text style={styles.heroEpisodeCount}>{series.episodes.length} Episodes</Text>
+                  <Text style={styles.heroDescription} numberOfLines={3}>
+                    {series.description}
+                  </Text>
+                  <View style={styles.heroButtons}>
+                    {series.episodes.length > 0 && (
+                      <TouchableOpacity
+                        style={styles.playButton}
+                        onPress={() => playEpisode(series.episodes[0])}
+                      >
+                        <Ionicons name="play" size={18} color="#fff" />
+                        <Text style={styles.playButtonText}>Play</Text>
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity
+                      style={styles.downloadAllButtonHero}
+                      onPress={() => openQualityPicker()}
+                    >
+                      <Ionicons name="download" size={18} color="#fff" />
+                      <Text style={styles.downloadAllText}>Download All</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </LinearGradient>
+            </ImageBackground>
           </View>
 
           {/* Episodes List */}
           <View style={styles.episodesSection}>
-            <Text style={styles.sectionTitle}>Episodes</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={styles.sectionTitle}>Episodes</Text>
+              <TouchableOpacity style={styles.downloadAllButton} onPress={() => openQualityPicker()}>
+                <Ionicons name="download" size={18} color="#fff" />
+                <Text style={styles.downloadAllText}>Download All</Text>
+              </TouchableOpacity>
+            </View>
             {series.episodes.map((episode) => (
               <TouchableOpacity
                 key={episode.id}
@@ -219,7 +289,7 @@ export default function SeriesDetailScreen() {
 
                 <TouchableOpacity
                   style={styles.downloadButton}
-                  onPress={() => downloadEpisode(episode)}
+                  onPress={() => openQualityPicker(episode)}
                 >
                   <Ionicons name="download-outline" size={20} color="#3B82F6" />
                 </TouchableOpacity>
@@ -234,14 +304,43 @@ export default function SeriesDetailScreen() {
         visible={selectedVideoUrl !== null}
         presentationStyle="overFullScreen"
         statusBarTranslucent
+        onRequestClose={closeVideo}
       >
         {selectedVideoUrl && (
           <VideoPlayer
             uri={selectedVideoUrl}
             title={selectedVideoTitle}
+            isVisible={true}
             onClose={closeVideo}
           />
         )}
+      </Modal>
+
+      {/* Quality Selection Modal */}
+      <Modal
+        visible={qualityModal !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setQualityModal(null)}
+      >
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPressOut={() => setQualityModal(null)}
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Quality</Text>
+            {VIDEO_QUALITIES.map((q) => (
+              <TouchableOpacity
+                key={q.value}
+                style={styles.qualityOption}
+                onPress={() => handleQualitySelect(q.value)}
+              >
+                <Text style={styles.qualityText}>{q.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
       </Modal>
     </>
   );
@@ -302,7 +401,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 20,
-    paddingTop: 10,
   },
   backButton: {
     width: 40,
@@ -315,39 +413,79 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
-  seriesHeader: {
-    flexDirection: 'row',
-    padding: 20,
+  heroContainer: {
+    width: '100%',
+    height: 340,
   },
-  seriesPoster: {
-    width: 120,
-    height: 180,
-    borderRadius: 8,
-    marginRight: 16,
-  },
-  seriesInfo: {
+  heroImage: {
     flex: 1,
+    justifyContent: 'flex-end',
   },
-  seriesTitle: {
+  heroImageStyle: {
+    resizeMode: 'cover',
+  },
+  heroGradient: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+  },
+  heroContent: {
+    width: '100%',
+  },
+  heroTitle: {
     color: '#fff',
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  seriesGenre: {
-    color: '#3B82F6',
-    fontSize: 16,
     marginBottom: 4,
   },
-  episodeCount: {
-    color: '#6B7280',
-    fontSize: 14,
-    marginBottom: 12,
+  heroGenre: {
+    color: '#93C5FD',
+    fontSize: 16,
+    marginBottom: 2,
   },
-  seriesDescription: {
+  heroEpisodeCount: {
+    color: '#9CA3AF',
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  heroDescription: {
     color: '#D1D5DB',
     fontSize: 14,
     lineHeight: 20,
+    marginBottom: 12,
+  },
+  heroButtons: {
+    flexDirection: 'row',
+  },
+  playButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginRight: 12,
+  },
+  playButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  downloadAllButtonHero: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#3B82F6',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  downloadAllText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
   },
   episodesSection: {
     padding: 20,
@@ -424,5 +562,32 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(59, 130, 246, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalContent: {
+    width: '80%',
+    backgroundColor: '#1F2937',
+    borderRadius: 12,
+    padding: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  qualityOption: {
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  qualityText: {
+    fontSize: 16,
+    color: '#fff',
   },
 }); 

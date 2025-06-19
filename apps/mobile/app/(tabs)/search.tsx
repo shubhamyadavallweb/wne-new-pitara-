@@ -8,12 +8,12 @@ import {
   Image,
   StyleSheet,
   Alert,
-  SafeAreaView,
   ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useSeriesData } from '@pitara/hooks';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SearchScreen() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -194,8 +194,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   header: {
-    padding: 20,
-    paddingTop: 10,
+    paddingHorizontal: 20,
+    paddingTop: 0,
   },
   title: {
     color: '#fff',

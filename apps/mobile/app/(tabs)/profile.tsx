@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   Image,
@@ -14,6 +13,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth, useSubscription, useDownloads } from '@pitara/hooks';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
+import { supabase } from '@pitara/supabase';
+import { Animated } from 'react-native';
 
 export default function Profile() {
   const { user, signOut } = useAuth();
@@ -24,31 +27,42 @@ export default function Profile() {
   const [userName, setUserName] = useState(user?.user_metadata?.full_name || 'User');
   const [userEmail, setUserEmail] = useState(user?.email || '');
   const [downloadQuality, setDownloadQuality] = useState('1080p');
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  } | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 2000);
+  };
 
   const handleSaveProfile = async () => {
     try {
+      if (user) {
+        await supabase.auth.updateUser({ data: { full_name: userName } });
+      }
       await AsyncStorage.setItem('@pitara_user_name', userName);
       await AsyncStorage.setItem('@pitara_download_quality', downloadQuality);
       setIsEditingProfile(false);
-      Alert.alert('Profile Updated', 'Your profile settings have been saved successfully.');
+      showToast('Profile saved');
     } catch (error) {
-      Alert.alert('Error', 'Failed to update profile. Please try again.');
+      console.error('handleSaveProfile error', error);
+      showToast('Failed to save profile');
     }
   };
 
   const handleLogout = async () => {
     try {
       await signOut();
-      Alert.alert('Signed Out', 'You have been successfully signed out.');
+      // Logout successful, navigate to login screen
+      router.replace('/(auth)/google');
+      showToast('Signed out');
     } catch (error) {
-      Alert.alert('Error', 'Failed to sign out. Please try again.');
+      showToast('Failed to sign out');
     }
-  };
-
-  const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
-    Alert.alert('Theme Changed', `Switched to ${!isDarkMode ? 'dark' : 'light'} mode.`);
   };
 
   const cycleDownloadQuality = () => {
@@ -58,15 +72,15 @@ export default function Profile() {
     const newQuality = qualities[nextIndex];
     setDownloadQuality(newQuality);
     AsyncStorage.setItem('@pitara_download_quality', newQuality);
-    Alert.alert('Download Quality Updated', `Download quality set to ${newQuality}.`);
+    showToast(`Download quality: ${newQuality}`);
   };
 
   const navigateToSubscription = () => {
-    Alert.alert('Navigation', 'Navigate to subscription screen');
+    router.push('/subscription');
   };
 
   const navigateToSubscriptionHistory = () => {
-    Alert.alert('Navigation', 'Navigate to subscription history');
+    router.push('/purchase-history');
   };
 
   const settingsOptions = [
@@ -92,13 +106,6 @@ export default function Profile() {
       action: navigateToSubscriptionHistory
     },
     {
-      id: 'theme',
-      title: 'App Theme',
-      description: isDarkMode ? 'Dark mode (Current)' : 'Light mode (Current)',
-      icon: isDarkMode ? 'moon-outline' : 'sunny-outline' as const,
-      action: toggleTheme
-    },
-    {
       id: 'downloads',
       title: 'Download Quality',
       description: `${downloadQuality} (Current)`,
@@ -110,23 +117,27 @@ export default function Profile() {
       title: 'Clear Downloads',
       description: `${downloads.length} downloaded episodes`,
       icon: 'trash-outline' as const,
-      action: () => {
-        Alert.alert(
-          'Clear Downloads',
-          'Are you sure you want to delete all downloaded episodes?',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Clear', style: 'destructive', onPress: clearAllDownloads }
-          ]
-        );
-      }
+      action: () =>
+        setConfirmDialog({
+          title: 'Clear Downloads',
+          message: 'Delete all downloaded episodes?',
+          onConfirm: async () => {
+            await clearAllDownloads();
+            showToast('Downloads cleared');
+          },
+        }),
     },
     {
       id: 'logout',
       title: 'Sign Out',
       description: 'Sign out of your account',
       icon: 'log-out-outline' as const,
-      action: handleLogout,
+      action: () =>
+        setConfirmDialog({
+          title: 'Sign Out',
+          message: 'Are you sure you want to sign out?',
+          onConfirm: handleLogout,
+        }),
       danger: true
     }
   ];
@@ -196,6 +207,45 @@ export default function Profile() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Confirm Dialog */}
+      {confirmDialog && (
+        <Modal
+          transparent
+          animationType="fade"
+          visible={true}
+          onRequestClose={() => setConfirmDialog(null)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>{confirmDialog.title}</Text>
+              <Text style={styles.modalMessage}>{confirmDialog.message}</Text>
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={[styles.modalButton, { backgroundColor: '#374151' }]}
+                  onPress={() => setConfirmDialog(null)}
+                >
+                  <Text style={styles.modalButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, { backgroundColor: '#EF4444' }]}
+                  onPress={() => {
+                    confirmDialog.onConfirm();
+                    setConfirmDialog(null);
+                  }}
+                >
+                  <Text style={styles.modalButtonText}>Confirm</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+      {/* Toast */}
+      {toastMessage && (
+        <View style={styles.toastContainer}>
+          <Text style={styles.toastText}>{toastMessage}</Text>
+        </View>
+      )}
       <ScrollView style={styles.content}>
         {/* Profile Header */}
         <View style={styles.profileHeader}>
@@ -211,7 +261,7 @@ export default function Profile() {
           
           {isSubscribed && (
             <View style={styles.subscriptionBadge}>
-              <Ionicons name="crown" size={16} color="#FFD700" />
+              <Ionicons name="star" size={16} color="#FFD700" />
               <Text style={styles.subscriptionText}>{subscriptionTier} Member</Text>
             </View>
           )}
@@ -243,7 +293,7 @@ export default function Profile() {
             >
               <View style={styles.settingIcon}>
                 <Ionicons 
-                  name={option.icon} 
+                  name={option.icon as any} 
                   size={24} 
                   color={option.danger ? "#EF4444" : "#3B82F6"} 
                 />
@@ -295,8 +345,9 @@ const styles = StyleSheet.create({
   },
   profileHeader: {
     alignItems: 'center',
-    padding: 20,
-    paddingTop: 10,
+    paddingHorizontal: 20,
+    paddingTop: 0,
+    paddingBottom: 20,
   },
   profileImageSection: {
     alignItems: 'center',
@@ -439,6 +490,58 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  toastContainer: {
+    position: 'absolute',
+    bottom: 40,
+    left: 20,
+    right: 20,
+    backgroundColor: '#111827',
+    padding: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  toastText: {
+    color: '#fff',
+    fontSize: 14,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '80%',
+    backgroundColor: '#1F2937',
+    padding: 20,
+    borderRadius: 12,
+  },
+  modalTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
+  modalMessage: {
+    color: '#9CA3AF',
+    fontSize: 14,
+    marginBottom: 20,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  modalButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginLeft: 12,
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontSize: 14,
     fontWeight: '600',
   },
 }); 
