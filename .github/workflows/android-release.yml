@@ -94,7 +94,7 @@ jobs:
       - name: Install dependencies
         working-directory: apps/mobile
         run: |
-          npm ci --production --legacy-peer-deps --no-audit --no-fund
+          npm ci --legacy-peer-deps --no-audit --no-fund
 
       # 8) Install Expo CLI globally (specific version keeps reproducibility)
       - name: Install Expo CLI
