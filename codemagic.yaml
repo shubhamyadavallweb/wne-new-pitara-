@@ -20,6 +20,7 @@ workflows:
       branch_patterns:
         - pattern: "*" # Build on any branch PR
           include: true
+      # a new build.
       cancel_previous_builds: true
           
     scripts:
@@ -78,6 +79,7 @@ workflows:
       branch_patterns:
         - pattern: "main"
           include: true
+      # a new build.
       cancel_previous_builds: true
           
     scripts:
