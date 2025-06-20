@@ -9,9 +9,8 @@ workflows:
       node: "18.18.0"     # Expo SDK 50 supports Node 18
       java: "17"          # Required by modern Android Gradle Plugin
       
-      # Environment variables that will be provided securely in Codemagic UI
-      groups:
-        - android_keystore   # CM_KEYSTORE, CM_KEYSTORE_FILENAME, CM_KEYSTORE_PASSWORD, CM_KEY_PASSWORD, CM_KEY_ALIAS
+      # Environment variables are provided individually in Codemagic UI
+      # Using individual variables instead of groups
       
       vars:
         PROJECT_DIR: "apps/mobile"
