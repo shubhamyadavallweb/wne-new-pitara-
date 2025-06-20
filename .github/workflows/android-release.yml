@@ -17,6 +17,28 @@ jobs:
       CM_KEYSTORE_PASSWORD: "7d351b0f395bb01c1fd3ac4a96c6c126"
       CM_KEY_PASSWORD: "1f66c8c19ab910f5ec3c55aeb7028c18"
       CM_KEY_ALIAS: "3cac6c96b4ce9ceefd167ec8de475c63"
+      # सुपाबेस और अन्य एन्वायरनमेंट वेरिएबल्स
+      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      # रेज़रपे और गूगल ऑथ कॉन्फिगरेशन
+      EXPO_PUBLIC_RAZORPAY_KEY: ${{ secrets.EXPO_PUBLIC_RAZORPAY_KEY }}
+      EXPO_PUBLIC_RAZORPAY_KEY_SECRET: ${{ secrets.EXPO_PUBLIC_RAZORPAY_KEY_SECRET }}
+      EXPO_PUBLIC_RAZORPAY_WEBHOOK_SECRET: ${{ secrets.EXPO_PUBLIC_RAZORPAY_WEBHOOK_SECRET }}
+      EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}
+      EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID }}
+      EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID }}
+      EXPO_PUBLIC_GOOGLE_WEB_CLIENT_SECRET: ${{ secrets.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_SECRET }}
+      EXPO_PUBLIC_BYPASS_AUTH: ${{ secrets.EXPO_PUBLIC_BYPASS_AUTH }}
+      # निम्बस एसएमएस कॉन्फिगरेशन
+      NIMBUS_USER: ${{ secrets.NIMBUS_USER }}
+      NIMBUS_AUTHKEY: ${{ secrets.NIMBUS_AUTHKEY }}
+      NIMBUS_SENDER: ${{ secrets.NIMBUS_SENDER }}
+      NIMBUS_ENTITYID: ${{ secrets.NIMBUS_ENTITYID }}
+      NIMBUS_TEMPLATEID: ${{ secrets.NIMBUS_TEMPLATEID }}
 
     defaults:
       run:
@@ -78,12 +100,38 @@ jobs:
       - name: Install Expo CLI
         run: npm install -g @expo/cli@^0.16.1
 
-      # 9) Generate native Android project from Expo (cleans previous build)
+      # 9) Create .env file with environment variables
+      - name: Set up environment variables
+        working-directory: apps/mobile
+        run: |
+          cat > .env << EOF
+          EXPO_PUBLIC_SUPABASE_URL=${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_ACCESS_TOKEN=${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF=${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_DB_URL=${{ secrets.SUPABASE_DB_URL }}
+          EXPO_PUBLIC_RAZORPAY_KEY=${{ secrets.EXPO_PUBLIC_RAZORPAY_KEY }}
+          EXPO_PUBLIC_RAZORPAY_KEY_SECRET=${{ secrets.EXPO_PUBLIC_RAZORPAY_KEY_SECRET }}
+          EXPO_PUBLIC_RAZORPAY_WEBHOOK_SECRET=${{ secrets.EXPO_PUBLIC_RAZORPAY_WEBHOOK_SECRET }}
+          EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=${{ secrets.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}
+          EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=${{ secrets.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID }}
+          EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=${{ secrets.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID }}
+          EXPO_PUBLIC_GOOGLE_WEB_CLIENT_SECRET=${{ secrets.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_SECRET }}
+          EXPO_PUBLIC_BYPASS_AUTH=${{ secrets.EXPO_PUBLIC_BYPASS_AUTH }}
+          NIMBUS_USER=${{ secrets.NIMBUS_USER }}
+          NIMBUS_AUTHKEY=${{ secrets.NIMBUS_AUTHKEY }}
+          NIMBUS_SENDER=${{ secrets.NIMBUS_SENDER }}
+          NIMBUS_ENTITYID=${{ secrets.NIMBUS_ENTITYID }}
+          NIMBUS_TEMPLATEID=${{ secrets.NIMBUS_TEMPLATEID }}
+          EOF
+
+      # 10) Generate native Android project from Expo (cleans previous build)
       - name: Expo prebuild (Android)
         working-directory: apps/mobile
         run: npx expo prebuild --platform android --clean --non-interactive --no-install
 
-      # 10) Decode Android keystore & configure signing (if secrets are present)
+      # 11) Decode Android keystore & configure signing (if secrets are present)
       - name: Configure keystore for signing
         if: env.CM_KEYSTORE != ''
         working-directory: apps/mobile
@@ -97,14 +145,14 @@ jobs:
           MYAPP_UPLOAD_KEY_PASSWORD=$CM_KEY_PASSWORD
           EOF
 
-      # 11) Grant execute permission to Gradle wrapper & build release APK
+      # 12) Grant execute permission to Gradle wrapper & build release APK
       - name: Assemble release APK
         working-directory: apps/mobile/android
         run: |
           chmod +x ./gradlew
           ./gradlew assembleRelease --no-daemon --stacktrace
 
-      # 12) Upload the generated APK as GitHub Actions artifact
+      # 13) Upload the generated APK as GitHub Actions artifact
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
