@@ -120,6 +120,17 @@ workflows:
           echo "📦 Generated APK files:"
           find app/build/outputs/apk -name "*.apk" | sort
 
+      # 8. Copy APK to a more accessible location
+      - name: Copy APK to artifacts directory
+        script: |
+          # Create artifacts directory
+          mkdir -p $CM_BUILD_DIR/artifacts
+          # Copy APK file
+          cp $PROJECT_DIR/android/app/build/outputs/apk/release/app-release.apk $CM_BUILD_DIR/artifacts/
+          # List copied files
+          ls -la $CM_BUILD_DIR/artifacts/
+
     artifacts:
-      # Only collect APK outputs (removed AAB)
-      - "$PROJECT_DIR/android/app/build/outputs/apk/release/app-release.apk" 
+      # APKs with more generic paths to ensure they are found
+      - $PROJECT_DIR/android/app/build/outputs/apk/**/*.apk
+      - $CM_BUILD_DIR/artifacts/*.apk 
