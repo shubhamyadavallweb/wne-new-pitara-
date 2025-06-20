@@ -42,8 +42,8 @@ workflows:
           # Clean npm cache and start fresh
           npm cache clean --force
           rm -rf package-lock.json node_modules
-          # Install dependencies with proper flags
-          npm install --legacy-peer-deps --force
+          # Install only production dependencies (omit dev) for smaller APK
+          npm install --production --legacy-peer-deps --force
           
       # 3. Install Expo CLI globally with specific version
       - name: Install Expo CLI

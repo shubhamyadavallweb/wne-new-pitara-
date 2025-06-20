@@ -48,7 +48,10 @@ module.exports = {
       'expo-build-properties',
       {
         android: {
-          usesCleartextTraffic: true
+          usesCleartextTraffic: true,
+          enableProguardInReleaseBuilds: true,
+          enableShrinkResourcesInReleaseBuilds: true,
+          enableSeparateBuildPerCPUArchitecture: false
         },
         ios: {
           deploymentTarget: '15.1'
