@@ -19,7 +19,9 @@ module.exports = {
     scheme: "pitara",
     config: {
       googleSignIn: {
-        reservedClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
+        ...(process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
+          ? { reservedClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID }
+          : {})
       }
     },
     deploymentTarget: '15.1'
