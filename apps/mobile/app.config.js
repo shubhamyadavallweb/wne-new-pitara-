@@ -37,8 +37,7 @@ module.exports = {
       "INTERNET",
       "ACCESS_NETWORK_STATE"
     ],
-    versionCode: 3,
-    googleServicesFile: "./google-services.json"
+    versionCode: 3
   },
   web: {
     favicon: './assets/Assets/pitaralogo.png'
@@ -46,7 +45,6 @@ module.exports = {
   plugins: [
     'expo-router',
     'expo-video',
-    '@react-native-google-signin/google-signin',
     [
       'expo-build-properties',
       {
