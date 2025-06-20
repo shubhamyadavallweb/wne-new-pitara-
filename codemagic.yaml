@@ -110,22 +110,22 @@ workflows:
           cd "$PROJECT_DIR"
           
           echo "### Keystore Configuration Debug ###"
-          
-          if [ -z "$CM_KEYSTORE_FILENAME" ]; then
-            echo "❌ Error: CM_KEYSTORE_FILENAME is not set."
+
+          # Read the keystore content directly from the file in the repository
+          if [ ! -f "keystore_base64.txt" ]; then
+            echo "❌ FATAL: keystore_base64.txt not found in the repository!"
             exit 1
           fi
           
           # Trim whitespace/newlines from the keystore variable, a common copy-paste error.
-          TRIMMED_KEYSTORE=$(printf "%s" "$CM_KEYSTORE" | tr -d '[:space:]')
+          TRIMMED_KEYSTORE=$(cat keystore_base64.txt | tr -d '[:space:]')
 
           if [ -z "$TRIMMED_KEYSTORE" ]; then
-            echo "❌ FATAL: CM_KEYSTORE environment variable is empty or contains only whitespace."
-            echo "Please go to your Codemagic project -> 'Environment variables' tab -> 'x' group and ensure CM_KEYSTORE has a valid value."
+            echo "❌ FATAL: keystore_base64.txt is empty or contains only whitespace."
             exit 1
           fi
 
-          echo "✅ CM_KEYSTORE variable is present."
+          echo "✅ Keystore content loaded from file."
           
           mkdir -p android/app
           
@@ -136,9 +136,7 @@ workflows:
           
           # Final check: Ensure the output file was actually created and is not empty.
           if [ ! -s "android/app/$CM_KEYSTORE_FILENAME" ]; then
-              echo "❌ FATAL: Keystore decoding failed. The output file is empty."
-              echo "This means the value of CM_KEYSTORE is NOT a valid base64 string."
-              echo "Please RE-ENCODE your .jks file and update the variable in Codemagic."
+              echo "❌ FATAL: Keystore decoding failed. The content of keystore_base64.txt is NOT a valid base64 string."
               exit 1
           fi
           
