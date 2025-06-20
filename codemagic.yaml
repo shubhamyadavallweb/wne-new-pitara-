@@ -16,6 +16,10 @@ workflows:
         NODE_ENV: "production"
         EXPO_NO_DOTENV: "1"
       
+      # Use the environment group name
+      groups:
+        - x
+        
     triggering:
       events:
         - push
@@ -82,8 +86,10 @@ workflows:
           cd "$PROJECT_DIR"
           # Clean node_modules/.cache folder to ensure fresh prebuild
           rm -rf node_modules/.cache
-          # Generate native Android project with verbose logging
-          npx expo prebuild --platform android --clean --non-interactive --no-install --verbose
+          # Set CI flag to enable non-interactive mode for Expo CLI
+          export CI=1
+          # Generate native Android project
+          npx expo prebuild --platform android --clean --no-install
           # Verify prebuild results
           if [ -d "android" ]; then
             echo "✅ Android prebuild completed successfully"
