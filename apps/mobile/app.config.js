@@ -44,7 +44,6 @@ module.exports = {
   },
   plugins: [
     'expo-router',
-    'expo-video',
     [
       'expo-build-properties',
       {
