@@ -103,29 +103,49 @@ workflows:
       # 6. Configure Android keystore for signing
       - name: Configure keystore for signing
         script: |
-          set -e # Exit immediately if a command exits with a non-zero status.
-          
+          # Exit on error and print each command before executing
+          set -e
+          set -x
+
           cd "$PROJECT_DIR"
           
-          # Check if secrets are available
-          if [ -z "$CM_KEYSTORE" ] || [ -z "$CM_KEYSTORE_FILENAME" ]; then
-            echo "❌ Error: CM_KEYSTORE or CM_KEYSTORE_FILENAME is not set."
-            echo "Please ensure these secrets are configured in your Codemagic environment group ('x')."
+          echo "### Keystore Configuration Debug ###"
+          
+          if [ -z "$CM_KEYSTORE_FILENAME" ]; then
+            echo "❌ Error: CM_KEYSTORE_FILENAME is not set."
+            exit 1
+          fi
+          
+          # Trim whitespace/newlines from the keystore variable, a common copy-paste error.
+          TRIMMED_KEYSTORE=$(printf "%s" "$CM_KEYSTORE" | tr -d '[:space:]')
+
+          if [ -z "$TRIMMED_KEYSTORE" ]; then
+            echo "❌ FATAL: CM_KEYSTORE environment variable is empty or contains only whitespace."
+            echo "Please go to your Codemagic project -> 'Environment variables' tab -> 'x' group and ensure CM_KEYSTORE has a valid value."
             exit 1
           fi
 
+          echo "✅ CM_KEYSTORE variable is present."
+          
           mkdir -p android/app
           
-          # Decode the base64 keystore file from environment variable
-          echo "🔑 Decoding and setting up keystore..."
-          echo "$CM_KEYSTORE" | base64 --decode > android/app/$CM_KEYSTORE_FILENAME
+          echo "🔑 Decoding keystore..."
           
-          # Verify that the decode command was successful and the file is not empty
+          # Use printf for safer handling of the variable into the base64 decoder.
+          printf "%s" "$TRIMMED_KEYSTORE" | base64 --decode > android/app/"$CM_KEYSTORE_FILENAME"
+          
+          # Final check: Ensure the output file was actually created and is not empty.
           if [ ! -s "android/app/$CM_KEYSTORE_FILENAME" ]; then
-              echo "❌ Error: Keystore decoding failed. The resulting file is empty or was not created."
-              echo "Please verify the CM_KEYSTORE value in your Codemagic environment group ('x'). It must be a valid base64 encoded JKS file."
+              echo "❌ FATAL: Keystore decoding failed. The output file is empty."
+              echo "This means the value of CM_KEYSTORE is NOT a valid base64 string."
+              echo "Please RE-ENCODE your .jks file and update the variable in Codemagic."
               exit 1
           fi
+          
+          echo "✅ Keystore file created successfully."
+          
+          # Turn off command printing for the rest of the script
+          set +x
 
           # Configure gradle properties for signing and increase memory
           cat >> android/gradle.properties <<EOF
