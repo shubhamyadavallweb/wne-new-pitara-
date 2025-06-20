@@ -6,7 +6,7 @@ workflows:
     instance_type: mac_mini_m2
     
     environment:
-      node: "18.18.0"     # Expo SDK 52 supports Node 18
+      node: "18.18.0"     # Expo SDK 50 supports Node 18
       java: "17"          # Required by modern Android Gradle Plugin
       
       # Environment variables that will be provided securely in Codemagic UI
@@ -49,7 +49,7 @@ workflows:
       # 3. Install Expo CLI globally with specific version
       - name: Install Expo CLI
         script: |
-          # Install specific Expo CLI version compatible with SDK 52
+          # Install specific Expo CLI version compatible with SDK 50
           npm install -g @expo/cli@latest
           # Verify installation
           npx expo --version
