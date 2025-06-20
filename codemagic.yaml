@@ -103,10 +103,30 @@ workflows:
       # 6. Configure Android keystore for signing
       - name: Configure keystore for signing
         script: |
+          set -e # Exit immediately if a command exits with a non-zero status.
+          
           cd "$PROJECT_DIR"
+          
+          # Check if secrets are available
+          if [ -z "$CM_KEYSTORE" ] || [ -z "$CM_KEYSTORE_FILENAME" ]; then
+            echo "❌ Error: CM_KEYSTORE or CM_KEYSTORE_FILENAME is not set."
+            echo "Please ensure these secrets are configured in your Codemagic environment group ('x')."
+            exit 1
+          fi
+
           mkdir -p android/app
+          
           # Decode the base64 keystore file from environment variable
+          echo "🔑 Decoding and setting up keystore..."
           echo "$CM_KEYSTORE" | base64 --decode > android/app/$CM_KEYSTORE_FILENAME
+          
+          # Verify that the decode command was successful and the file is not empty
+          if [ ! -s "android/app/$CM_KEYSTORE_FILENAME" ]; then
+              echo "❌ Error: Keystore decoding failed. The resulting file is empty or was not created."
+              echo "Please verify the CM_KEYSTORE value in your Codemagic environment group ('x'). It must be a valid base64 encoded JKS file."
+              exit 1
+          fi
+
           # Configure gradle properties for signing and increase memory
           cat >> android/gradle.properties <<EOF
           MYAPP_UPLOAD_STORE_FILE=app/$CM_KEYSTORE_FILENAME
@@ -117,19 +137,17 @@ workflows:
           EOF
           echo "✅ Android keystore and Gradle memory configured"
 
-      # 7. Build APK only (improved error handling and cleanup)
+      # 7. Build Android APK
       - name: Build Android APK
         script: |
           cd "$PROJECT_DIR"/android
           # Make gradlew executable
           chmod +x ./gradlew
-          # Set CI flag for non-interactive build scan publishing
-          export CI=1
           # Clean build first
           ./gradlew clean
-          # Build APK for release and generate a build scan for diagnostics
+          # Build APK for release
           echo "🔨 Building APK..."
-          ./gradlew assembleRelease --no-daemon --stacktrace --scan
+          ./gradlew assembleRelease --no-daemon --stacktrace
           
           echo "✅ Build completed"
           
