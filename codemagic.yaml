@@ -1,24 +1,76 @@
 workflows:
+  expo-android:
+    # Builds a debug APK on pull requests for testing purposes.
+    name: NewPitara – Android APK (Debug)
+    max_build_duration: 90
+    instance_type: mac_mini_m2
+    
+    environment:
+      node: "18.18.0"
+      java: "17"
+      vars:
+        PROJECT_DIR: "apps/mobile"
+        NODE_OPTIONS: "--max_old_space_size=4096"
+        NODE_ENV: "development"
+        EXPO_NO_DOTENV: "1"
+        
+    triggering:
+      events:
+        - pull_request
+      branch_patterns:
+        - pattern: "*" # Build on any branch PR
+          include: true
+      cancel_previous_builds: true
+          
+    scripts:
+      - name: Change to project directory
+        script: |
+          cd "$PROJECT_DIR"
+          echo "📁 Working directory: $(pwd)"
+
+      - name: Install npm dependencies
+        script: |
+          cd "$PROJECT_DIR"
+          npm cache clean --force
+          npm ci --legacy-peer-deps --no-audit --no-fund
+          
+      - name: Install Expo CLI
+        script: |
+          npm install -g @expo/cli@^0.16.1
+          npx expo --version
+          echo "✅ Expo CLI installed successfully"
+
+      - name: Expo prebuild (Android)
+        script: |
+          cd "$PROJECT_DIR"
+          rm -rf android
+          npx expo prebuild --platform android --clean --no-install
+          
+      - name: Build Android Debug APK
+        script: |
+          cd "$PROJECT_DIR"/android
+          chmod +x ./gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+          
+    artifacts:
+      - "$PROJECT_DIR/android/app/build/outputs/apk/debug/*.apk"
+
   expo-android-release:
-    # Builds the Expo Router app under newpitara/apps/mobile and outputs a signed release APK
+    # Builds a signed, production-ready release APK on push to the main branch.
     name: NewPitara – Android Release APK (Expo)
     max_build_duration: 90
     instance_type: mac_mini_m2
     
     environment:
-      node: "18.18.0"     # Expo SDK 50 supports Node 18
-      java: "17"          # Required by modern Android Gradle Plugin
-      
-      # Environment variables with user's custom group
+      node: "18.18.0"
+      java: "17"
       vars:
         PROJECT_DIR: "apps/mobile"
         NODE_OPTIONS: "--max_old_space_size=4096"
         NODE_ENV: "production"
         EXPO_NO_DOTENV: "1"
-      
-      # Use the environment group name
       groups:
-        - x
+        - x # IMPORTANT: Ensure this group contains all required secrets
         
     triggering:
       events:
@@ -29,31 +81,23 @@ workflows:
       cancel_previous_builds: true
           
     scripts:
-      # 1. Change to project directory
       - name: Change to project directory
         script: |
           cd "$PROJECT_DIR"
           echo "📁 Working directory: $(pwd)"
 
-      # 2. Clean npm cache and install dependencies
       - name: Install npm dependencies
         script: |
           cd "$PROJECT_DIR"
-          # Clean npm cache and start fresh
           npm cache clean --force
-          # Install dependencies with legacy peer deps flag
           npm ci --legacy-peer-deps --no-audit --no-fund
           
-      # 3. Install Expo CLI globally with specific version
       - name: Install Expo CLI
         script: |
-          # Install specific Expo CLI version compatible with SDK 50
           npm install -g @expo/cli@^0.16.1
-          # Verify installation
           npx expo --version
           echo "✅ Expo CLI installed successfully"
 
-      # 4. Create .env file with environment variables (pulled from Codemagic secrets)
       - name: Set up environment variables
         script: |
           cd "$PROJECT_DIR"
@@ -72,80 +116,47 @@ workflows:
           EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=$EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
           EXPO_PUBLIC_GOOGLE_WEB_CLIENT_SECRET=$EXPO_PUBLIC_GOOGLE_WEB_CLIENT_SECRET
           EXPO_PUBLIC_BYPASS_AUTH=$EXPO_PUBLIC_BYPASS_AUTH
-          NIMBUS_USER=$NIMBUS_USER
-          NIMBUS_AUTHKEY=$NIMBUS_AUTHKEY
-          NIMBUS_SENDER=$NIMBUS_SENDER
-          NIMBUS_ENTITYID=$NIMBUS_ENTITYID
-          NIMBUS_TEMPLATEID=$NIMBUS_TEMPLATEID
+          EXPO_PUBLIC_BUNNY_CDN_URL=$EXPO_PUBLIC_BUNNY_CDN_URL
           EOF
           echo "✅ Environment variables configured"
 
-      # 5. Generate the native Android project (creates android/ folder)
       - name: Expo prebuild (Android)
         script: |
           cd "$PROJECT_DIR"
-          # Clean node_modules/.cache folder to ensure fresh prebuild
           rm -rf node_modules/.cache
-          # Set CI flag to enable non-interactive mode for Expo CLI
           export CI=1
-          # Generate native Android project
           npx expo prebuild --platform android --clean --no-install
-          # Verify prebuild results
           if [ -d "android" ]; then
             echo "✅ Android prebuild completed successfully"
-            # List the generated files for debugging
-            ls -la android/
           else
             echo "❌ Android prebuild failed - android directory not created"
             exit 1
           fi
 
-      # 6. Configure Android keystore for signing
       - name: Configure keystore for signing
         script: |
-          # Exit on error and print each command before executing
           set -e
           set -x
-
           cd "$PROJECT_DIR"
-          
-          echo "### Keystore Configuration Debug ###"
-
-          # Read the keystore content directly from the file in the repository
-          if [ ! -f "keystore_base64.txt" ]; then
-            echo "❌ FATAL: keystore_base64.txt not found in the repository!"
+          if [ -z "$CM_KEYSTORE_FILENAME" ]; then
+            echo "❌ Error: CM_KEYSTORE_FILENAME is not set."
             exit 1
           fi
-          
-          # Trim whitespace/newlines from the keystore variable, a common copy-paste error.
-          TRIMMED_KEYSTORE=$(cat keystore_base64.txt | tr -d '[:space:]')
-
+          TRIMMED_KEYSTORE=$(printf "%s" "$CM_KEYSTORE" | tr -d '[:space:]')
           if [ -z "$TRIMMED_KEYSTORE" ]; then
-            echo "❌ FATAL: keystore_base64.txt is empty or contains only whitespace."
+            echo "❌ FATAL: CM_KEYSTORE environment variable is empty or contains only whitespace."
             exit 1
           fi
-
-          echo "✅ Keystore content loaded from file."
-          
+          echo "✅ CM_KEYSTORE variable is present."
           mkdir -p android/app
-          
           echo "🔑 Decoding keystore..."
-          
-          # Use printf for safer handling of the variable into the base64 decoder.
           printf "%s" "$TRIMMED_KEYSTORE" | base64 --decode > android/app/"$CM_KEYSTORE_FILENAME"
-          
-          # Final check: Ensure the output file was actually created and is not empty.
           if [ ! -s "android/app/$CM_KEYSTORE_FILENAME" ]; then
-              echo "❌ FATAL: Keystore decoding failed. The content of keystore_base64.txt is NOT a valid base64 string."
+              echo "❌ FATAL: Keystore decoding failed. The output file is empty."
               exit 1
           fi
-          
           echo "✅ Keystore file created successfully."
-          
-          # Turn off command printing for the rest of the script
           set +x
-
-          # Configure gradle properties for signing and increase memory
           cat >> android/gradle.properties <<EOF
           MYAPP_UPLOAD_STORE_FILE=app/$CM_KEYSTORE_FILENAME
           MYAPP_UPLOAD_STORE_PASSWORD=$CM_KEYSTORE_PASSWORD
@@ -155,38 +166,23 @@ workflows:
           EOF
           echo "✅ Android keystore and Gradle memory configured"
 
-      # 7. Build Android APK
       - name: Build Android APK
         script: |
           cd "$PROJECT_DIR"/android
-          # Make gradlew executable
           chmod +x ./gradlew
-          # Clean build first
           ./gradlew clean
-          # Build APK for release
           echo "🔨 Building APK..."
           ./gradlew assembleRelease --no-daemon --stacktrace
-          
           echo "✅ Build completed"
-          
-          # Show output files with complete paths for debugging
           find . -name "*.apk" | sort
 
-      # 8. Copy APK to artifacts directory with improved path handling
       - name: Copy APK to artifacts directory
         script: |
-          # Create artifacts directory
           mkdir -p $CM_BUILD_DIR/artifacts
-          # Copy APK file (more specific path)
           find $PROJECT_DIR/android/app/build/outputs/apk -name "*.apk" -exec cp {} $CM_BUILD_DIR/artifacts/ \;
-          # List copied files
           ls -la $CM_BUILD_DIR/artifacts/
-          
-          # Additionally copy to a known location for consistency
           cp $PROJECT_DIR/android/app/build/outputs/apk/release/app-release.apk $CM_BUILD_DIR/artifacts/pitara-release.apk || echo "Standard APK path not found"
 
     artifacts:
-      # Multiple artifact paths to ensure capture
       - $PROJECT_DIR/android/app/build/outputs/apk/release/*.apk
-      - $PROJECT_DIR/android/app/build/outputs/apk/debug/*.apk
       - $CM_BUILD_DIR/artifacts/*.apk 
