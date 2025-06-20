@@ -47,8 +47,8 @@
     "react-native-web": "~0.19.6",
     "typescript": "^5.3.3",
     "zustand": "^4.5.2",
-    "@pitara/supabase": "1.0.0",
-    "@pitara/hooks": "1.0.0"
+    "@pitara/supabase": "file:../../packages/supabase",
+    "@pitara/hooks": "file:../../packages/hooks"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

@@ -90,7 +90,7 @@ workflows:
 
       - name: Install npm dependencies
         script: |
-          cd "$PROJECT_DIR"
+          echo "📁 Installing dependencies from monorepo root: $(pwd)"
           npm cache clean --force
           npm ci --legacy-peer-deps --no-audit --no-fund
           
