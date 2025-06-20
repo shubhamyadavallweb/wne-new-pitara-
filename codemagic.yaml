@@ -16,19 +16,9 @@ workflows:
         NODE_ENV: "production"
         EXPO_NO_DOTENV: "1"
       
-      # Android keystore variables for signing
-      android_signing:
-        - x
-        
-      # Define environment groups for sensitive values
+      # Use the environment group name
       groups:
-        # All app secrets and keystore values in group "x"
-        - x:
-            CM_KEYSTORE: Encrypted(...)
-            CM_KEYSTORE_FILENAME: "@pmp16__pitara-mobile.jks"
-            CM_KEYSTORE_PASSWORD: Encrypted(...)
-            CM_KEY_PASSWORD: Encrypted(...)
-            CM_KEY_ALIAS: Encrypted(...)
+        - x
         
     triggering:
       events:
