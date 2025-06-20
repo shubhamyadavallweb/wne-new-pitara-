@@ -140,24 +140,28 @@ workflows:
           set -e
           set -x
           cd "$PROJECT_DIR"
-          if [ -z "$CM_KEYSTORE_FILENAME" ]; then
-            echo "❌ Error: CM_KEYSTORE_FILENAME is not set."
-            exit 1
-          fi
-          TRIMMED_KEYSTORE=$(printf "%s" "$CM_KEYSTORE" | tr -d '[:space:]')
-          if [ -z "$TRIMMED_KEYSTORE" ]; then
-            echo "❌ FATAL: CM_KEYSTORE environment variable is empty or contains only whitespace."
-            exit 1
-          fi
-          echo "✅ CM_KEYSTORE variable is present."
-          mkdir -p android/app
-          echo "🔑 Decoding keystore..."
-          printf "%s" "$TRIMMED_KEYSTORE" | base64 --decode > android/app/"$CM_KEYSTORE_FILENAME"
-          if [ ! -s "android/app/$CM_KEYSTORE_FILENAME" ]; then
-              echo "❌ FATAL: Keystore decoding failed. The output file is empty."
+
+          if [ ! -f "keystore_base64.txt" ]; then
+              echo "❌ FATAL: keystore_base64.txt not found in project directory ($PROJECT_DIR)!"
+              ls -la
               exit 1
           fi
-          echo "✅ Keystore file created successfully."
+
+          echo "✅ Found keystore_base64.txt file."
+          
+          mkdir -p android/app
+          
+          echo "🔑 Decoding keystore from file..."
+          cat keystore_base64.txt | base64 --decode > android/app/"$CM_KEYSTORE_FILENAME"
+          
+          if [ ! -s "android/app/$CM_KEYSTORE_FILENAME" ]; then
+              echo "❌ FATAL: Keystore decoding failed. The output file is empty."
+              echo "This likely means the content of keystore_base64.txt is NOT a valid base64 string."
+              exit 1
+          fi
+          
+          echo "✅ Keystore file created successfully from file."
+          
           set +x
           cat >> android/gradle.properties <<EOF
           MYAPP_UPLOAD_STORE_FILE=app/$CM_KEYSTORE_FILENAME
