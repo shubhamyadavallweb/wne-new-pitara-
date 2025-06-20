@@ -1,7 +1,13 @@
 // Learn more https://docs.expo.io/guides/customizing-metro
 const { getDefaultConfig } = require('expo/metro-config');
 const path = require('path');
-const { withNativeWind } = require('nativewind/metro');   
+// Fix nativewind module loading - Make it optional
+let nativewindModule = null;
+try {
+  nativewindModule = require('nativewind/metro');
+} catch (error) {
+  console.warn('nativewind/metro not available, continuing without it');
+}
 
 // Find the project and workspace directories
 const projectRoot = __dirname;
@@ -33,7 +39,10 @@ config.resolver.extraNodeModules = {
   'react-native-safe-area-context': path.resolve(workspaceRoot, 'node_modules/react-native-safe-area-context'),
 };
 
-// Apply NativeWind configuration
-const nativeWindConfig = withNativeWind(config, { input: './global.css' });
+// Apply NativeWind configuration only if available
+let finalConfig = config;
+if (nativewindModule && nativewindModule.withNativeWind) {
+  finalConfig = nativewindModule.withNativeWind(config, { input: './global.css' });
+}
 
-module.exports = nativeWindConfig; 
+module.exports = finalConfig; 
