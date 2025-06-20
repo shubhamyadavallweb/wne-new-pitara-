@@ -1,7 +1,7 @@
 workflows:
-  expo-android:
-    # Builds the Expo Router app under newpitara/apps/mobile and outputs an unsigned APK
-    name: NewPitara – Android APK (Expo)
+  expo-android-release:
+    # Builds the Expo Router app under newpitara/apps/mobile and outputs a signed release APK
+    name: NewPitara – Android Release APK (Expo)
     max_build_duration: 90
     instance_type: mac_mini_m2
     
@@ -9,19 +9,33 @@ workflows:
       node: "18.18.0"     # Expo SDK 50 supports Node 18
       java: "17"          # Required by modern Android Gradle Plugin
       
-      # Environment variables are provided individually in Codemagic UI
-      # Using individual variables instead of groups
-      
+      # Environment variables, provided individually in Codemagic UI
+      # Working with environment group 'pitara_mobile_env'
       vars:
         PROJECT_DIR: "apps/mobile"
         NODE_OPTIONS: "--max_old_space_size=4096"
         NODE_ENV: "production"
         EXPO_NO_DOTENV: "1"
+      
+      # Android keystore variables for signing
+      android_signing:
+        - keystore_reference
+        
+      # Define environment groups for sensitive values
+      groups:
+        # Main application secrets
+        - pitara_app_secrets
+        # Keystore configuration
+        - keystore_reference:
+            CM_KEYSTORE: Encrypted(...)
+            CM_KEYSTORE_FILENAME: "@pmp16__pitara-mobile.jks"
+            CM_KEYSTORE_PASSWORD: Encrypted(...)
+            CM_KEY_PASSWORD: Encrypted(...)
+            CM_KEY_ALIAS: Encrypted(...)
         
     triggering:
       events:
         - push
-        - pull_request
       branch_patterns:
         - pattern: "main"
           include: true
@@ -32,8 +46,7 @@ workflows:
       - name: Change to project directory
         script: |
           cd "$PROJECT_DIR"
-          pwd
-          ls -la
+          echo "📁 Working directory: $(pwd)"
 
       # 2. Clean npm cache and install dependencies
       - name: Install npm dependencies
@@ -41,90 +54,100 @@ workflows:
           cd "$PROJECT_DIR"
           # Clean npm cache and start fresh
           npm cache clean --force
-          rm -rf package-lock.json node_modules
-          # Install only production dependencies (omit dev) for smaller APK
-          npm install --production --legacy-peer-deps --force
+          # Install dependencies with legacy peer deps flag
+          npm ci --legacy-peer-deps --no-audit --no-fund
           
       # 3. Install Expo CLI globally with specific version
       - name: Install Expo CLI
         script: |
           # Install specific Expo CLI version compatible with SDK 50
-          npm install -g @expo/cli@latest
+          npm install -g @expo/cli@^0.16.1
           # Verify installation
           npx expo --version
-          echo "Expo CLI installed successfully"
+          echo "✅ Expo CLI installed successfully"
 
-      # 4. Generate the native Android project (creates android/ folder)
+      # 4. Create .env file with environment variables (pulled from Codemagic secrets)
+      - name: Set up environment variables
+        script: |
+          cd "$PROJECT_DIR"
+          cat > .env << EOF
+          EXPO_PUBLIC_SUPABASE_URL=$EXPO_PUBLIC_SUPABASE_URL
+          EXPO_PUBLIC_SUPABASE_ANON_KEY=$EXPO_PUBLIC_SUPABASE_ANON_KEY
+          SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY
+          SUPABASE_ACCESS_TOKEN=$SUPABASE_ACCESS_TOKEN
+          SUPABASE_PROJECT_REF=$SUPABASE_PROJECT_REF
+          SUPABASE_DB_URL=$SUPABASE_DB_URL
+          EXPO_PUBLIC_RAZORPAY_KEY=$EXPO_PUBLIC_RAZORPAY_KEY
+          EXPO_PUBLIC_RAZORPAY_KEY_SECRET=$EXPO_PUBLIC_RAZORPAY_KEY_SECRET
+          EXPO_PUBLIC_RAZORPAY_WEBHOOK_SECRET=$EXPO_PUBLIC_RAZORPAY_WEBHOOK_SECRET
+          EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=$EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID
+          EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=$EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID
+          EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=$EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
+          EXPO_PUBLIC_GOOGLE_WEB_CLIENT_SECRET=$EXPO_PUBLIC_GOOGLE_WEB_CLIENT_SECRET
+          EXPO_PUBLIC_BYPASS_AUTH=$EXPO_PUBLIC_BYPASS_AUTH
+          NIMBUS_USER=$NIMBUS_USER
+          NIMBUS_AUTHKEY=$NIMBUS_AUTHKEY
+          NIMBUS_SENDER=$NIMBUS_SENDER
+          NIMBUS_ENTITYID=$NIMBUS_ENTITYID
+          NIMBUS_TEMPLATEID=$NIMBUS_TEMPLATEID
+          EOF
+          echo "✅ Environment variables configured"
+
+      # 5. Generate the native Android project (creates android/ folder)
       - name: Expo prebuild (Android)
         script: |
           cd "$PROJECT_DIR"
-          # Set environment variables for prebuild
-          export NODE_ENV=production
-          export EXPO_NO_DOTENV=1
-          # Clear any existing android directory
-          rm -rf android
-          # Generate native Android project with verbose output
+          # Generate native Android project
           npx expo prebuild --platform android --clean --non-interactive --no-install
-          
-      # 5. Verify Android project was created
-      - name: Verify Android project
+          echo "✅ Android prebuild completed"
+
+      # 6. Configure Android keystore for signing
+      - name: Configure keystore for signing
         script: |
           cd "$PROJECT_DIR"
-          if [ ! -d "android" ]; then
-            echo "❌ Android directory not created by expo prebuild"
-            exit 1
-          fi
-          if [ ! -f "android/gradlew" ]; then
-            echo "❌ gradlew not found in android directory"
-            exit 1
-          fi
-          echo "✅ Android project structure verified"
-          ls -la android/
+          mkdir -p android/app
+          # Decode the base64 keystore file from environment variable
+          echo "$CM_KEYSTORE" | base64 --decode > android/app/$CM_KEYSTORE_FILENAME
+          # Configure gradle properties for signing
+          cat >> android/gradle.properties <<EOF
+          MYAPP_UPLOAD_STORE_FILE=app/$CM_KEYSTORE_FILENAME
+          MYAPP_UPLOAD_STORE_PASSWORD=$CM_KEYSTORE_PASSWORD
+          MYAPP_UPLOAD_KEY_ALIAS=$CM_KEY_ALIAS
+          MYAPP_UPLOAD_KEY_PASSWORD=$CM_KEY_PASSWORD
+          EOF
+          echo "✅ Android keystore configured"
 
-      # 6. Pre-bundle JavaScript (to catch bundling errors early)
-      - name: Pre-bundle JavaScript
-        script: |
-          cd "$PROJECT_DIR"  
-          # Set environment variables for bundling
-          export NODE_ENV=production
-          export EXPO_NO_DOTENV=1
-          # Try to bundle JavaScript without building APK to catch errors early
-          npx expo export --platform android --clear || echo "Pre-bundling failed, will try alternative approach"
-
-      # 7. Decode Android keystore (optional)
-      - name: Decode Android keystore (optional)
-        script: |
-          cd "$PROJECT_DIR"
-          # Only runs if keystore variables are set in the android_keystore group
-          if [ -n "$CM_KEYSTORE" ]; then
-            echo "📱 Setting up Android keystore..."
-            mkdir -p android/app
-            echo "$CM_KEYSTORE" | base64 --decode > android/app/$CM_KEYSTORE_FILENAME
-            echo "✅ Android keystore configured"
-          else
-            echo "ℹ️ No keystore configured - building unsigned APK"
-          fi
-
-      # 8. Compile Android APK (alternative approach)
-      - name: Compile Android APK
+      # 7. Build AAB and APK
+      - name: Build Android APK and AAB
         script: |
           cd "$PROJECT_DIR"/android
-          # Set environment variables for Android build
-          export NODE_ENV=production
-          export EXPO_NO_DOTENV=1
           # Make gradlew executable
           chmod +x ./gradlew
-          # Try to build APK with fallback strategies
-          echo "🔄 Attempting to build APK with standard method..."
-          if ./gradlew assembleRelease --no-daemon --stacktrace --info; then
-            echo "✅ APK built successfully with standard method"
-          else
-            echo "❌ Standard method failed, trying with debug build..."
-            ./gradlew assembleDebug --no-daemon --stacktrace --info
-          fi
+          # Build both APK and AAB for release
+          echo "🔨 Building APK..."
+          ./gradlew assembleRelease --no-daemon --stacktrace
+          
+          echo "🔨 Building App Bundle (AAB)..."
+          ./gradlew bundleRelease --no-daemon --stacktrace
+          
+          echo "✅ Build completed"
+          
+          # Show output files
+          echo "📦 Generated APK files:"
+          find app/build/outputs/apk -name "*.apk" | sort
+          
+          echo "📦 Generated AAB files:"
+          find app/build/outputs/bundle -name "*.aab" | sort
 
     artifacts:
-      # Collect APK(s) produced during the build
-      - "$PROJECT_DIR/android/app/build/outputs/**/*.apk"
-
-    # Optional: You can configure email notifications in Codemagic UI instead of here 
+      # Collect both APK and AAB outputs
+      - "$PROJECT_DIR/android/app/build/outputs/apk/release/app-release.apk"
+      - "$PROJECT_DIR/android/app/build/outputs/bundle/release/app-release.aab"
+      
+    publishing:
+      email:
+        recipients:
+          - $EMAIL_RECIPIENT
+        notify:
+          success: true
+          failure: true 
