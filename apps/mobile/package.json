@@ -45,7 +45,10 @@
     "react-native-url-polyfill": "^2.0.0",
     "react-native-vector-icons": "^10.0.2",
     "react-native-web": "~0.19.6",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "zustand": "^4.5.2",
+    "@pitara/supabase": "1.0.0",
+    "@pitara/hooks": "1.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
