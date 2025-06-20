@@ -84,9 +84,19 @@ workflows:
       - name: Expo prebuild (Android)
         script: |
           cd "$PROJECT_DIR"
-          # Generate native Android project
-          npx expo prebuild --platform android --clean --non-interactive --no-install
-          echo "✅ Android prebuild completed"
+          # Clean node_modules/.cache folder to ensure fresh prebuild
+          rm -rf node_modules/.cache
+          # Generate native Android project with verbose logging
+          npx expo prebuild --platform android --clean --non-interactive --no-install --verbose
+          # Verify prebuild results
+          if [ -d "android" ]; then
+            echo "✅ Android prebuild completed successfully"
+            # List the generated files for debugging
+            ls -la android/
+          else
+            echo "❌ Android prebuild failed - android directory not created"
+            exit 1
+          fi
 
       # 6. Configure Android keystore for signing
       - name: Configure keystore for signing
@@ -104,33 +114,38 @@ workflows:
           EOF
           echo "✅ Android keystore configured"
 
-      # 7. Build APK only (removed AAB build)
+      # 7. Build APK only (improved error handling and cleanup)
       - name: Build Android APK
         script: |
           cd "$PROJECT_DIR"/android
           # Make gradlew executable
           chmod +x ./gradlew
+          # Clean build first
+          ./gradlew clean
           # Build APK for release
           echo "🔨 Building APK..."
           ./gradlew assembleRelease --no-daemon --stacktrace
           
           echo "✅ Build completed"
           
-          # Show output files
-          echo "📦 Generated APK files:"
-          find app/build/outputs/apk -name "*.apk" | sort
+          # Show output files with complete paths for debugging
+          find . -name "*.apk" | sort
 
-      # 8. Copy APK to a more accessible location
+      # 8. Copy APK to artifacts directory with improved path handling
       - name: Copy APK to artifacts directory
         script: |
           # Create artifacts directory
           mkdir -p $CM_BUILD_DIR/artifacts
-          # Copy APK file
-          cp $PROJECT_DIR/android/app/build/outputs/apk/release/app-release.apk $CM_BUILD_DIR/artifacts/
+          # Copy APK file (more specific path)
+          find $PROJECT_DIR/android/app/build/outputs/apk -name "*.apk" -exec cp {} $CM_BUILD_DIR/artifacts/ \;
           # List copied files
           ls -la $CM_BUILD_DIR/artifacts/
+          
+          # Additionally copy to a known location for consistency
+          cp $PROJECT_DIR/android/app/build/outputs/apk/release/app-release.apk $CM_BUILD_DIR/artifacts/pitara-release.apk || echo "Standard APK path not found"
 
     artifacts:
-      # APKs with more generic paths to ensure they are found
-      - $PROJECT_DIR/android/app/build/outputs/apk/**/*.apk
+      # Multiple artifact paths to ensure capture
+      - $PROJECT_DIR/android/app/build/outputs/apk/release/*.apk
+      - $PROJECT_DIR/android/app/build/outputs/apk/debug/*.apk
       - $CM_BUILD_DIR/artifacts/*.apk 
