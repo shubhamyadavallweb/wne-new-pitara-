@@ -122,12 +122,4 @@ workflows:
 
     artifacts:
       # Only collect APK outputs (removed AAB)
-      - "$PROJECT_DIR/android/app/build/outputs/apk/release/app-release.apk"
-      
-    publishing:
-      email:
-        recipients:
-          - $EMAIL_RECIPIENT
-        notify:
-          success: true
-          failure: true 
+      - "$PROJECT_DIR/android/app/build/outputs/apk/release/app-release.apk" 
