@@ -9,8 +9,7 @@ workflows:
       node: "18.18.0"     # Expo SDK 50 supports Node 18
       java: "17"          # Required by modern Android Gradle Plugin
       
-      # Environment variables, provided individually in Codemagic UI
-      # Working with environment group 'pitara_mobile_env'
+      # Environment variables with user's custom group
       vars:
         PROJECT_DIR: "apps/mobile"
         NODE_OPTIONS: "--max_old_space_size=4096"
@@ -19,14 +18,12 @@ workflows:
       
       # Android keystore variables for signing
       android_signing:
-        - keystore_reference
+        - x
         
       # Define environment groups for sensitive values
       groups:
-        # Main application secrets
-        - pitara_app_secrets
-        # Keystore configuration
-        - keystore_reference:
+        # All app secrets and keystore values in group "x"
+        - x:
             CM_KEYSTORE: Encrypted(...)
             CM_KEYSTORE_FILENAME: "@pmp16__pitara-mobile.jks"
             CM_KEYSTORE_PASSWORD: Encrypted(...)
@@ -117,32 +114,25 @@ workflows:
           EOF
           echo "✅ Android keystore configured"
 
-      # 7. Build AAB and APK
-      - name: Build Android APK and AAB
+      # 7. Build APK only (removed AAB build)
+      - name: Build Android APK
         script: |
           cd "$PROJECT_DIR"/android
           # Make gradlew executable
           chmod +x ./gradlew
-          # Build both APK and AAB for release
+          # Build APK for release
           echo "🔨 Building APK..."
           ./gradlew assembleRelease --no-daemon --stacktrace
-          
-          echo "🔨 Building App Bundle (AAB)..."
-          ./gradlew bundleRelease --no-daemon --stacktrace
           
           echo "✅ Build completed"
           
           # Show output files
           echo "📦 Generated APK files:"
           find app/build/outputs/apk -name "*.apk" | sort
-          
-          echo "📦 Generated AAB files:"
-          find app/build/outputs/bundle -name "*.aab" | sort
 
     artifacts:
-      # Collect both APK and AAB outputs
+      # Only collect APK outputs (removed AAB)
       - "$PROJECT_DIR/android/app/build/outputs/apk/release/app-release.apk"
-      - "$PROJECT_DIR/android/app/build/outputs/bundle/release/app-release.aab"
       
     publishing:
       email:
