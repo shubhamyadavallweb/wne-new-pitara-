@@ -9,3 +9,5 @@ Token configured and authentication fixed
 EXPO_TOKEN added to variable group x - testing authentication
 
 Build trigger: 2025-06-21 14:40 - Fixed authentication logic, removed unsupported --stdin option, need fresh EXPO_TOKEN
+
+Build trigger: 2025-06-21 14:45 - Testing with new EXPO_TOKEN m56pg1UORIoBcI27mbYsBNLvwnm-AkieA4nLp4mz
