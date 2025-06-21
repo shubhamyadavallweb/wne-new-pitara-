@@ -150,7 +150,8 @@ workflows:
           
           echo "🔑 Verifying EAS authentication..."
           
-          # Test authentication with more detailed error handling
+          # Test authentication with better error handling
+          echo "🔑 Testing Expo authentication..."
           if npx expo whoami 2>&1 | tee /tmp/expo_auth.log; then
             echo "✅ Successfully authenticated with Expo"
             echo "👤 Current user: $(npx expo whoami)"
@@ -159,22 +160,19 @@ workflows:
             echo "📋 Error details:"
             cat /tmp/expo_auth.log || echo "No error log found"
             
-            # Try alternative authentication method
-            echo "🔄 Trying alternative authentication..."
-            echo "$EXPO_TOKEN" | npx expo login --stdin || {
-              echo "❌ Alternative authentication also failed"
-              echo "🔍 Debugging information:"
-              echo "- Token length: ${#EXPO_TOKEN}"
-              echo "- Token format: ${EXPO_TOKEN:0:10}..."
-              echo "- CI environment: $CI"
-              echo "- Working directory: $(pwd)"
-              echo ""
-              echo "Please verify:"
-              echo "1. EXPO_TOKEN is correctly set in Codemagic variable group 'x'"
-              echo "2. Token was generated with: expo token:create"
-              echo "3. Token has proper permissions for EAS builds"
-              exit 1
-            }
+            echo "🔍 Debugging information:"
+            echo "- Token length: ${#EXPO_TOKEN}"
+            echo "- Token starts with: ${EXPO_TOKEN:0:10}..."
+            echo "- CI environment: $CI"
+            echo "- Working directory: $(pwd)"
+            echo ""
+            echo "❌ EXPO_TOKEN authentication failed!"
+            echo "Please verify:"
+            echo "1. EXPO_TOKEN is correctly set in Codemagic variable group 'x'"
+            echo "2. Token was generated with: expo token:create"
+            echo "3. Token has proper permissions for EAS builds"
+            echo "4. Token is not expired or revoked"
+            exit 1
           fi
           
           echo "✅ EAS credentials configured successfully"
@@ -192,13 +190,19 @@ workflows:
           
           # Verify we're still authenticated
           echo "🔍 Verifying authentication..."
-          if ! npx expo whoami; then
+          if ! npx expo whoami 2>/dev/null; then
             echo "❌ Not authenticated with Expo"
-            echo "🔄 Attempting re-authentication..."
-            echo "$EXPO_TOKEN" | npx expo login --stdin || {
-              echo "❌ Re-authentication failed"
+            echo "🔍 EXPO_TOKEN environment variable check:"
+            if [ -z "$EXPO_TOKEN" ]; then
+              echo "❌ EXPO_TOKEN is not set in this step!"
               exit 1
-            }
+            else
+              echo "✅ EXPO_TOKEN is available (length: ${#EXPO_TOKEN})"
+            fi
+            
+            echo "❌ Authentication failed - EXPO_TOKEN may be invalid or expired"
+            echo "Please regenerate EXPO_TOKEN with: expo token:create"
+            exit 1
           fi
           
           echo "👤 Building as user: $(npx expo whoami)"
