@@ -4,3 +4,5 @@ Status: Ready for EAS Build with EXPO_TOKEN and all required variables
 
 This file triggers new builds when updated.
 EAS Build should work now with all credentials properly configured.
+
+Token configured and authentication fixed
