@@ -1,0 +1,93 @@
+name: Simple Android APK Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          
+      - name: Setup Java  
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: "platform-tools platforms;android-34 build-tools;34.0.0"
+          
+      - name: Debug workspace structure
+        run: |
+          echo "=== Workspace Structure ==="
+          ls -la
+          echo "=== Apps Directory ==="  
+          ls -la apps/ || echo "No apps directory"
+          echo "=== Mobile Directory ==="
+          ls -la apps/mobile/ || echo "No mobile directory"
+          echo "=== Package.json files ==="
+          find . -name "package.json" -type f
+          
+      - name: Install dependencies
+        run: |
+          echo "=== Installing root dependencies ==="
+          npm ci --legacy-peer-deps
+          echo "=== Installing mobile dependencies ==="
+          cd apps/mobile
+          npm ci --legacy-peer-deps
+          
+      - name: Install Expo CLI
+        run: |
+          npm install -g @expo/cli@latest
+          expo --version
+          
+      - name: Create environment file
+        run: |
+          cd apps/mobile
+          cat > .env << EOF
+          EXPO_PUBLIC_SUPABASE_URL=https://jdfnkvbfpvzddjtgiovj.supabase.co
+          EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpkZm5rdmJmcHZ6ZGRqdGdpb3ZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk3ODE5OTcsImV4cCI6MjA2NTM1Nzk5N30.zHUA-ESeIWzsfEpkt6O7-nWOBLaBf8MCEQlUb2JcnOI
+          EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=1089697091920-0b2qntimau4d59chhqouu6i8j4u1e6oi.apps.googleusercontent.com
+          NODE_ENV=production
+          EOF
+          echo "Environment file created:"
+          cat .env
+          
+      - name: Expo prebuild
+        run: |
+          cd apps/mobile
+          echo "=== Starting Expo prebuild ==="
+          npx expo prebuild --platform android --clean --non-interactive --no-install
+          echo "=== Prebuild completed ==="
+          ls -la android/ || echo "Android directory not created"
+          
+      - name: Build APK
+        run: |
+          cd apps/mobile/android
+          echo "=== Making gradlew executable ==="
+          chmod +x ./gradlew
+          echo "=== Starting Gradle build ==="
+          ./gradlew clean
+          ./gradlew assembleRelease --no-daemon --stacktrace
+          echo "=== Build completed ==="
+          find . -name "*.apk" -type f
+          
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: simple-android-apk
+          path: apps/mobile/android/app/build/outputs/apk/release/*.apk 

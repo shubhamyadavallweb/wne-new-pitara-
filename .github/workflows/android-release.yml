@@ -56,7 +56,6 @@ jobs:
         with:
           node-version: 18
           cache: 'npm'
-          cache-dependency-path: 'package-lock.json'
 
       # 3) Set up Java (required by Android Gradle Plugin ≥ 8)
       - name: Set up Java
@@ -98,11 +97,15 @@ jobs:
       - name: Install root dependencies
         working-directory: .
         run: |
+          echo "📦 Installing root dependencies..."
           npm ci --legacy-peer-deps --no-audit --no-fund
+          echo "✅ Root dependencies installed"
 
       - name: Install mobile app dependencies
         run: |
+          echo "📱 Installing mobile app dependencies..."
           npm ci --legacy-peer-deps --no-audit --no-fund
+          echo "✅ Mobile app dependencies installed"
 
       # 8) Install Expo CLI globally (specific version keeps reproducibility)
       - name: Install Expo CLI
@@ -120,7 +123,11 @@ jobs:
 
       # 10) Generate native Android project from Expo (cleans previous build)
       - name: Expo prebuild (Android)
-        run: npx expo prebuild --platform android --clean --non-interactive --no-install
+        run: |
+          echo "🔨 Starting Expo prebuild..."
+          npx expo prebuild --platform android --clean --non-interactive --no-install
+          echo "✅ Expo prebuild completed"
+          ls -la android/ || echo "Android directory not found"
 
       # 11) Decode Android keystore & configure signing (if secrets are present)
       - name: Configure keystore for signing
