@@ -1,6 +1,7 @@
 // Learn more https://docs.expo.io/guides/customizing-metro
-const { getSentryExpoConfig } = require('@sentry/react-native/metro');
+const { getDefaultConfig } = require('@expo/metro-config');
 const path = require('path');
+
 // Fix nativewind module loading - Make it optional
 let nativewindModule = null;
 try {
@@ -14,7 +15,8 @@ const projectRoot = __dirname;
 const monorepoRoot = path.resolve(projectRoot, '../..');
 
 /** @type {import('expo/metro-config').MetroConfig} */
-const config = getSentryExpoConfig(projectRoot);
+// Use getDefaultConfig properly to extend @expo/metro-config
+const config = getDefaultConfig(__dirname);
 
 // 1. Watch all files in the monorepo
 config.watchFolders = [monorepoRoot];
@@ -33,13 +35,13 @@ require('dotenv').config({ path: path.resolve(monorepoRoot, '.env') });
 
 // Configure extraNodeModules to ensure consistent resolution
 config.resolver.extraNodeModules = {
+  ...config.resolver.extraNodeModules,
   'react-native-safe-area-context': path.resolve(monorepoRoot, 'node_modules/react-native-safe-area-context'),
 };
 
 // Apply NativeWind configuration only if available
-let finalConfig = config;
 if (nativewindModule && nativewindModule.withNativeWind) {
-  finalConfig = nativewindModule.withNativeWind(config, { input: './global.css' });
-}
-
-module.exports = finalConfig; 
+  module.exports = nativewindModule.withNativeWind(config, { input: './global.css' });
+} else {
+  module.exports = config;
+} 

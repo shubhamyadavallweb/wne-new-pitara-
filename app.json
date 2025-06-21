@@ -1,11 +1,18 @@
 {
   "expo": {
+    "scheme": "pitara",
     "extra": {
       "eas": {
         "projectId": "6db74e90-7de6-4896-9971-2ea9e9146f46"
       },
       "EXPO_PUBLIC_SUPABASE_URL": "https://jdfnkvbfpvzddjtgiovj.supabase.co",
       "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-    }
+    },
+    "android": {
+      "package": "com.pmp16.pitaramonorepo"
+    },
+    "plugins": [
+      "expo-router"
+    ]
   }
 }

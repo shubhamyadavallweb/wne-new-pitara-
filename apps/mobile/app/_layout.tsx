@@ -152,7 +152,9 @@ export default function RootLayout() {
       hasSession: !!session, 
       inAuthGroup, 
       segments: segments.join('/'),
-      currentLocation: segments.join('/')
+      currentLocation: segments.join('/'),
+      isDevBypass,
+      loading
     });
     
     // If authentication is required (production) and user is not logged in
@@ -199,9 +201,9 @@ export default function RootLayout() {
                   },
                 }}
               >
-                <Stack.Screen name="index" options={{ headerShown: false }} />
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                 <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="index" options={{ headerShown: false }} />
                 <Stack.Screen name="series/[id]" options={{ headerShown: false }} />
                 <Stack.Screen name="subscription" options={{ 
                   title: 'Subscribe to Pitara',
