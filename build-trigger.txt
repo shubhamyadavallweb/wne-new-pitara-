@@ -13,3 +13,5 @@ Build trigger: 2025-06-21 14:40 - Fixed authentication logic, removed unsupporte
 Build trigger: 2025-06-21 14:45 - Testing with new EXPO_TOKEN m56pg1UORIoBcI27mbYsBNLvwnm-AkieA4nLp4mz
 
 Build trigger: 2025-06-21 14:50 - Force fresh build after EXPO_TOKEN update in Codemagic UI
+
+Build trigger: 2025-06-21 14:55 - Added direct EXPO_TOKEN value in YAML as fallback to bypass Codemagic variable issues
