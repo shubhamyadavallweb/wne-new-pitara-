@@ -43,6 +43,7 @@ jobs:
     defaults:
       run:
         shell: bash
+        working-directory: apps/mobile
 
     steps:
       # 1) Checkout repository source
@@ -54,6 +55,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18
+          cache: 'npm'
+          cache-dependency-path: 'package-lock.json'
 
       # 3) Set up Java (required by Android Gradle Plugin ≥ 8)
       - name: Set up Java
@@ -75,6 +78,7 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
+            apps/mobile/android/.gradle
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
@@ -90,9 +94,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
-      # 7) Install project dependencies (only production ones for a leaner bundle)
-      - name: Install dependencies
-        working-directory: apps/mobile
+      # 7) Install project dependencies (monorepo structure)
+      - name: Install root dependencies
+        working-directory: .
+        run: |
+          npm ci --legacy-peer-deps --no-audit --no-fund
+
+      - name: Install mobile app dependencies
         run: |
           npm ci --legacy-peer-deps --no-audit --no-fund
 
@@ -102,39 +110,21 @@ jobs:
 
       # 9) Create .env file with environment variables
       - name: Set up environment variables
-        working-directory: apps/mobile
         run: |
           cat > .env << EOF
-          EXPO_PUBLIC_SUPABASE_URL=${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
-          EXPO_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SUPABASE_ACCESS_TOKEN=${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_REF=${{ secrets.SUPABASE_PROJECT_REF }}
-          SUPABASE_DB_URL=${{ secrets.SUPABASE_DB_URL }}
-          EXPO_PUBLIC_RAZORPAY_KEY=${{ secrets.EXPO_PUBLIC_RAZORPAY_KEY }}
-          EXPO_PUBLIC_RAZORPAY_KEY_SECRET=${{ secrets.EXPO_PUBLIC_RAZORPAY_KEY_SECRET }}
-          EXPO_PUBLIC_RAZORPAY_WEBHOOK_SECRET=${{ secrets.EXPO_PUBLIC_RAZORPAY_WEBHOOK_SECRET }}
-          EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=${{ secrets.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}
-          EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=${{ secrets.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID }}
-          EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=${{ secrets.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID }}
-          EXPO_PUBLIC_GOOGLE_WEB_CLIENT_SECRET=${{ secrets.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_SECRET }}
-          EXPO_PUBLIC_BYPASS_AUTH=${{ secrets.EXPO_PUBLIC_BYPASS_AUTH }}
-          NIMBUS_USER=${{ secrets.NIMBUS_USER }}
-          NIMBUS_AUTHKEY=${{ secrets.NIMBUS_AUTHKEY }}
-          NIMBUS_SENDER=${{ secrets.NIMBUS_SENDER }}
-          NIMBUS_ENTITYID=${{ secrets.NIMBUS_ENTITYID }}
-          NIMBUS_TEMPLATEID=${{ secrets.NIMBUS_TEMPLATEID }}
+          EXPO_PUBLIC_SUPABASE_URL=${{ secrets.EXPO_PUBLIC_SUPABASE_URL || 'https://jdfnkvbfpvzddjtgiovj.supabase.co' }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpkZm5rdmJmcHZ6ZGRqdGdpb3ZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk3ODE5OTcsImV4cCI6MjA2NTM1Nzk5N30.zHUA-ESeIWzsfEpkt6O7-nWOBLaBf8MCEQlUb2JcnOI' }}
+          EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=${{ secrets.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '1089697091920-0b2qntimau4d59chhqouu6i8j4u1e6oi.apps.googleusercontent.com' }}
+          NODE_ENV=production
           EOF
 
       # 10) Generate native Android project from Expo (cleans previous build)
       - name: Expo prebuild (Android)
-        working-directory: apps/mobile
         run: npx expo prebuild --platform android --clean --non-interactive --no-install
 
       # 11) Decode Android keystore & configure signing (if secrets are present)
       - name: Configure keystore for signing
         if: env.CM_KEYSTORE != ''
-        working-directory: apps/mobile
         run: |
           mkdir -p android/app
           echo "$CM_KEYSTORE" | base64 --decode > android/app/$CM_KEYSTORE_FILENAME
@@ -143,14 +133,16 @@ jobs:
           MYAPP_UPLOAD_STORE_PASSWORD=$CM_KEYSTORE_PASSWORD
           MYAPP_UPLOAD_KEY_ALIAS=$CM_KEY_ALIAS
           MYAPP_UPLOAD_KEY_PASSWORD=$CM_KEY_PASSWORD
+          org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g
           EOF
 
       # 12) Grant execute permission to Gradle wrapper & build release APK
       - name: Assemble release APK
-        working-directory: apps/mobile/android
         run: |
+          cd android
           chmod +x ./gradlew
-          ./gradlew assembleRelease --no-daemon --stacktrace
+          ./gradlew clean
+          ./gradlew assembleRelease --no-daemon --stacktrace --warning-mode all
 
       # 13) Upload the generated APK as GitHub Actions artifact
       - name: Upload APK artifact

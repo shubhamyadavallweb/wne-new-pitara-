@@ -1,3 +1,63 @@
-# Ignore node modules
+# Dependencies
 node_modules/
-**/node_modules/
+*/node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+
+# Native
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# Debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+.env
+
+# Vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+
+# Android
+apps/mobile/android/
+apps/mobile/android/app/build/
+apps/mobile/android/build/
+apps/mobile/android/.gradle/
+apps/mobile/android/app/src/main/assets/
+*.apk
+*.aab
+
+# iOS  
+apps/mobile/ios/
+apps/mobile/ios/build/
+
+# Logs
+logs
+*.log
+
+# Build outputs
+build/
+dist/
+
+# Temporary files
+.tmp/
+temp/
