@@ -206,7 +206,7 @@ workflows:
           # Check if eas.json exists
           if [ ! -f "eas.json" ]; then
             echo "⚠️ eas.json not found, creating default configuration..."
-            cat > eas.json << 'EOF'
+            cat > eas.json << 'EASJSON'
 {
   "cli": {
     "version": ">= 7.8.6"
@@ -229,7 +229,7 @@ workflows:
     "production": {}
   }
 }
-EOF
+EASJSON
             echo "✅ Created eas.json configuration"
           fi
           

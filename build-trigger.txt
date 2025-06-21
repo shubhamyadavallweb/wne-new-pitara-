@@ -8,4 +8,4 @@ EAS Build should work now with all credentials properly configured.
 Token configured and authentication fixed
 EXPO_TOKEN added to variable group x - testing authentication
 
-Build trigger: 2025-06-21 14:25 - Fixed EXPO_TOKEN authentication with improved error handling and automatic eas.json creation
+Build trigger: 2025-06-21 14:30 - Fixed YAML syntax error in eas.json heredoc section
