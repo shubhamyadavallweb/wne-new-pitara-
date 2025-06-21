@@ -19,3 +19,5 @@ Build trigger: 2025-06-21 14:55 - Added direct EXPO_TOKEN value in YAML as fallb
 Build trigger: 2025-06-21 15:00 - Fixed eas.json configuration by removing invalid keystore settings for local builds
 
 Build trigger: 2025-06-21 15:05 - Added credentialsSource local to avoid interactive keystore generation
+
+Build trigger: 2025-06-21 15:10 - Fixed SDK version mismatch by setting sdkVersion to 50.0.0 to match dependencies

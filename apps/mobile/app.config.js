@@ -68,6 +68,7 @@ module.exports = {
     }
   },
   owner: "pmp16",
+  sdkVersion: "50.0.0",
   experiments: {
     tsconfigPaths: true
   }
