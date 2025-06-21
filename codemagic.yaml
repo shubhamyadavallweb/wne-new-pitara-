@@ -62,15 +62,15 @@ workflows:
     max_build_duration: 90
     instance_type: mac_mini_m2
     
-          environment:
-        node: "18.18.0"
-        vars:
-          PROJECT_DIR: "apps/mobile"
-          NODE_OPTIONS: "--max_old_space_size=4096"
-          NODE_ENV: "production"
-          EXPO_NO_DOTENV: "1"
-        groups:
-          - x # IMPORTANT: Ensure this group contains all required secrets including EXPO_TOKEN
+    environment:
+      node: "18.18.0"
+      vars:
+        PROJECT_DIR: "apps/mobile"
+        NODE_OPTIONS: "--max_old_space_size=4096"
+        NODE_ENV: "production"
+        EXPO_NO_DOTENV: "1"
+      groups:
+        - x # IMPORTANT: Ensure this group contains all required secrets including EXPO_TOKEN
         
     triggering:
       events:
