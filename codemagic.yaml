@@ -69,6 +69,7 @@ workflows:
         NODE_OPTIONS: "--max_old_space_size=4096"
         NODE_ENV: "production"
         EXPO_NO_DOTENV: "1"
+        EXPO_TOKEN: $EXPO_TOKEN # Direct access to EXPO_TOKEN variable
       groups:
         - x # IMPORTANT: Ensure this group contains all required secrets including EXPO_TOKEN
         
@@ -134,20 +135,16 @@ workflows:
             exit 1
           fi
           
-          # Set EXPO_TOKEN as environment variable for EAS CLI
+          # Set CI environment variable for EAS authentication
+          export CI=1
           export EXPO_TOKEN="$EXPO_TOKEN"
           
-          # Login to EAS using the token
-          echo "🔑 Authenticating with EAS..."
-          npx expo login --non-interactive || {
-            echo "❌ Failed to authenticate with Expo"
-            echo "Please verify your EXPO_TOKEN is valid"
-            exit 1
-          }
-          
-          # Verify authentication
+          echo "🔑 Verifying EAS authentication..."
+          # EAS CLI will automatically use EXPO_TOKEN when CI=1 is set
           npx expo whoami || {
-            echo "❌ Authentication verification failed"
+            echo "❌ Authentication failed with EXPO_TOKEN"
+            echo "Please verify your EXPO_TOKEN is valid and has proper permissions"
+            echo "Token should be generated with: expo token:create"
             exit 1
           }
           
@@ -159,7 +156,8 @@ workflows:
           
           echo "🔨 Building Android APK using EAS..."
           
-          # Ensure EXPO_TOKEN is available for this step
+          # Set CI environment variable and EXPO_TOKEN for this step
+          export CI=1
           export EXPO_TOKEN="$EXPO_TOKEN"
           
           # Verify we're still authenticated
