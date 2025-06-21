@@ -1,6 +1,6 @@
 {
   "cli": {
-    "version": ">= 5.2.0",
+    "version": ">= 0.46.0",
     "appVersionSource": "remote"
   },
   "build": {
@@ -28,7 +28,13 @@
       "node": "20.11.1",
       "android": {
         "buildType": "apk",
-        "credentialsSource": "local"
+        "credentialsSource": "local",
+        "keystore": {
+          "keystorePath": "../../android/keystores/@pmp16__pitara-mobile.jks",
+          "keystorePassword": "7d351b0f395bb01c1fd3ac4a96c6c126",
+          "keyAlias": "3cac6c96b4ce9ceefd167ec8de475c63",
+          "keyPassword": "1f66c8c19ab910f5ec3c55aeb7028c18"
+        }
       },
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://jdfnkvbfpvzddjtgiovj.supabase.co",

@@ -57,21 +57,20 @@ workflows:
       - "$PROJECT_DIR/android/app/build/outputs/apk/debug/*.apk"
 
   expo-android-release:
-    # Builds a signed, production-ready release APK on push to the main branch.
-    name: NewPitara – Android Release APK (Expo)
+    # Builds a signed, production-ready release APK using EAS Build
+    name: NewPitara – Android Release APK (EAS Build)
     max_build_duration: 90
     instance_type: mac_mini_m2
     
-    environment:
-      node: "18.18.0"
-      java: "17"
-      vars:
-        PROJECT_DIR: "apps/mobile"
-        NODE_OPTIONS: "--max_old_space_size=4096"
-        NODE_ENV: "production"
-        EXPO_NO_DOTENV: "1"
-      groups:
-        - x # IMPORTANT: Ensure this group contains all required secrets
+          environment:
+        node: "18.18.0"
+        vars:
+          PROJECT_DIR: "apps/mobile"
+          NODE_OPTIONS: "--max_old_space_size=4096"
+          NODE_ENV: "production"
+          EXPO_NO_DOTENV: "1"
+        groups:
+          - x # IMPORTANT: Ensure this group contains all required secrets including EXPO_TOKEN
         
     triggering:
       events:
@@ -94,11 +93,12 @@ workflows:
           npm cache clean --force
           npm ci --legacy-peer-deps --no-audit --no-fund
           
-      - name: Install Expo CLI
+      - name: Install EAS CLI
         script: |
-          npm install -g @expo/cli@^0.16.1
+          npm install -g @expo/cli@^0.16.1 eas-cli@latest
           npx expo --version
-          echo "✅ Expo CLI installed successfully"
+          eas --version
+          echo "✅ EAS CLI installed successfully"
 
       - name: Set up environment variables
         script: |
@@ -122,88 +122,40 @@ workflows:
           EOF
           echo "✅ Environment variables configured"
 
-      - name: Expo prebuild (Android)
+      - name: Configure EAS credentials
         script: |
           cd "$PROJECT_DIR"
-          rm -rf node_modules/.cache
-          export CI=1
-          npx expo prebuild --platform android --clean --no-install
-          if [ -d "android" ]; then
-            echo "✅ Android prebuild completed successfully"
-          else
-            echo "❌ Android prebuild failed - android directory not created"
-            exit 1
-          fi
+          echo "🔐 Setting up EAS credentials..."
+          
+          # Create EAS credentials file
+          mkdir -p ~/.expo
+          cat > ~/.expo/auth.json << EOF
+          {
+            "sessionSecret": "$EXPO_TOKEN"
+          }
+          EOF
+          
+          echo "✅ EAS credentials configured"
 
-      - name: Configure keystore for signing
+      - name: Build Android APK with EAS
         script: |
-          set -e
-          set -x
           cd "$PROJECT_DIR"
           
-          echo "🔍 Current directory: $(pwd)"
-          echo "📁 Listing files:"
-          ls -la
+          echo "🔨 Building Android APK using EAS..."
           
-          # Use existing key.properties from root
-          if [ -f "../../android/key.properties" ]; then
-            echo "✅ Using existing key.properties from root"
-            cp ../../android/key.properties android/
-            cp -r ../../android/keystores android/
-          elif [ -f "keystore_base64.txt" ]; then
-            echo "✅ Found keystore_base64.txt file."
-            mkdir -p android/app
-            echo "🔑 Decoding keystore from file..."
-            cat keystore_base64.txt | base64 --decode > android/app/"$CM_KEYSTORE_FILENAME"
-            
-            if [ ! -s "android/app/$CM_KEYSTORE_FILENAME" ]; then
-                echo "❌ FATAL: Keystore decoding failed."
-                exit 1
-            fi
-            
-            cat >> android/gradle.properties <<EOF
-          MYAPP_UPLOAD_STORE_FILE=app/$CM_KEYSTORE_FILENAME
-          MYAPP_UPLOAD_STORE_PASSWORD=$CM_KEYSTORE_PASSWORD
-          MYAPP_UPLOAD_KEY_ALIAS=$CM_KEY_ALIAS
-          MYAPP_UPLOAD_KEY_PASSWORD=$CM_KEY_PASSWORD
-          EOF
-          else
-            echo "❌ No keystore configuration found!"
-            exit 1
-          fi
-          
-          # Add Gradle optimization
-          cat >> android/gradle.properties <<EOF
-          org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g
-          org.gradle.daemon=false
-          org.gradle.configureondemand=false
-          org.gradle.parallel=false
-          EOF
-          echo "✅ Android keystore configured"
-
-      - name: Build Android APK
-        script: |
-          cd "$PROJECT_DIR"/android
-          
-          echo "🔍 Checking gradle wrapper..."
-          chmod +x ./gradlew
-          
-          echo "🧹 Cleaning project..."
-          ./gradlew clean --no-daemon --stacktrace
-          
-          echo "🔨 Building Release APK..."
-          ./gradlew assembleRelease --no-daemon --stacktrace --info
+          # Build APK using EAS
+          eas build --platform android --profile production --non-interactive --local --output build.apk
           
           echo "📦 Checking for APK files..."
-          find . -name "*.apk" -type f | sort
+          ls -la *.apk || echo "No APK files found in current directory"
           
-          if [ -f "app/build/outputs/apk/release/app-release.apk" ]; then
+          if [ -f "build.apk" ]; then
             echo "✅ APK built successfully!"
-            ls -la app/build/outputs/apk/release/
+            ls -la build.apk
           else
             echo "❌ APK not found!"
-            echo "📁 Checking build outputs:"
-            find app/build/outputs -type f | head -20 || echo "No build outputs found"
+            echo "📁 Checking for any APK files:"
+            find . -name "*.apk" -type f || echo "No APK files found anywhere"
             exit 1
           fi
 
@@ -212,16 +164,17 @@ workflows:
           echo "📁 Creating artifacts directory..."
           mkdir -p $CM_BUILD_DIR/artifacts
           
-          echo "🔍 Searching for APK files..."
-          find $PROJECT_DIR/android -name "*.apk" -type f
+          cd "$PROJECT_DIR"
+          echo "🔍 Looking for APK files..."
+          find . -name "*.apk" -type f
           
-          if [ -f "$PROJECT_DIR/android/app/build/outputs/apk/release/app-release.apk" ]; then
+          if [ -f "build.apk" ]; then
             echo "✅ Copying main APK..."
-            cp "$PROJECT_DIR/android/app/build/outputs/apk/release/app-release.apk" "$CM_BUILD_DIR/artifacts/pitara-release.apk"
+            cp "build.apk" "$CM_BUILD_DIR/artifacts/pitara-release.apk"
           fi
           
-          # Copy all APK files found
-          find $PROJECT_DIR/android/app/build/outputs/apk -name "*.apk" -exec cp {} $CM_BUILD_DIR/artifacts/ \; 2>/dev/null || echo "No APK files found in standard location"
+          # Copy any other APK files found
+          find . -name "*.apk" -exec cp {} $CM_BUILD_DIR/artifacts/ \; 2>/dev/null || echo "No additional APK files found"
           
           echo "📦 Final artifacts:"
           ls -la $CM_BUILD_DIR/artifacts/ || echo "No artifacts directory found"
