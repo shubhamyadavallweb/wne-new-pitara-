@@ -26,6 +26,9 @@
       "distribution": "store",
       "autoIncrement": true,
       "node": "20.11.1",
+      "cache": {
+        "disabled": true
+      },
       "android": {
         "buildType": "apk",
         "credentialsSource": "local"
