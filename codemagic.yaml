@@ -136,21 +136,46 @@ workflows:
             exit 1
           else
             echo "✅ EXPO_TOKEN is available (length: ${#EXPO_TOKEN})"
+            echo "🔍 Token starts with: ${EXPO_TOKEN:0:6}..."
           fi
           
-          # Set CI environment variable for EAS authentication
+          # Set environment variables for Expo authentication
           export CI=1
           export EXPO_TOKEN="$EXPO_TOKEN"
+          export EXPO_NO_TELEMETRY=1
+          
+          # Clear any existing auth state
+          echo "🔄 Clearing existing auth state..."
+          rm -rf ~/.expo 2>/dev/null || true
           
           echo "🔑 Verifying EAS authentication..."
-          # EAS CLI will automatically use EXPO_TOKEN when CI=1 is set
-          npx expo whoami || {
+          
+          # Test authentication with more detailed error handling
+          if npx expo whoami 2>&1 | tee /tmp/expo_auth.log; then
+            echo "✅ Successfully authenticated with Expo"
+            echo "👤 Current user: $(npx expo whoami)"
+          else
             echo "❌ Authentication failed with EXPO_TOKEN"
-            echo "Please verify your EXPO_TOKEN is valid and has proper permissions"
-            echo "Token should be generated with: expo token:create"
-            echo "Ensure token is in variable group 'x' in Codemagic"
-            exit 1
-          }
+            echo "📋 Error details:"
+            cat /tmp/expo_auth.log || echo "No error log found"
+            
+            # Try alternative authentication method
+            echo "🔄 Trying alternative authentication..."
+            echo "$EXPO_TOKEN" | npx expo login --stdin || {
+              echo "❌ Alternative authentication also failed"
+              echo "🔍 Debugging information:"
+              echo "- Token length: ${#EXPO_TOKEN}"
+              echo "- Token format: ${EXPO_TOKEN:0:10}..."
+              echo "- CI environment: $CI"
+              echo "- Working directory: $(pwd)"
+              echo ""
+              echo "Please verify:"
+              echo "1. EXPO_TOKEN is correctly set in Codemagic variable group 'x'"
+              echo "2. Token was generated with: expo token:create"
+              echo "3. Token has proper permissions for EAS builds"
+              exit 1
+            }
+          fi
           
           echo "✅ EAS credentials configured successfully"
 
@@ -160,35 +185,84 @@ workflows:
           
           echo "🔨 Building Android APK using EAS..."
           
-          # Set CI environment variable and EXPO_TOKEN for this step
+          # Set environment variables for this step
           export CI=1
           export EXPO_TOKEN="$EXPO_TOKEN"
+          export EXPO_NO_TELEMETRY=1
           
           # Verify we're still authenticated
           echo "🔍 Verifying authentication..."
-          npx expo whoami || {
+          if ! npx expo whoami; then
             echo "❌ Not authenticated with Expo"
-            exit 1
-          }
+            echo "🔄 Attempting re-authentication..."
+            echo "$EXPO_TOKEN" | npx expo login --stdin || {
+              echo "❌ Re-authentication failed"
+              exit 1
+            }
+          fi
+          
+          echo "👤 Building as user: $(npx expo whoami)"
+          
+          # Check if eas.json exists
+          if [ ! -f "eas.json" ]; then
+            echo "⚠️ eas.json not found, creating default configuration..."
+            cat > eas.json << 'EOF'
+{
+  "cli": {
+    "version": ">= 7.8.6"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {
+      "android": {
+        "buildType": "apk"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
+EOF
+            echo "✅ Created eas.json configuration"
+          fi
           
           # Build APK using EAS with better error handling
           echo "🚀 Starting EAS build..."
+          echo "📋 Build configuration:"
+          echo "- Platform: android"
+          echo "- Profile: production"
+          echo "- Build type: APK"
+          echo "- Local build: yes"
+          
           if ! eas build --platform android --profile production --non-interactive --local --output build.apk; then
             echo "❌ EAS build failed!"
             echo "📋 Build logs above should contain error details"
+            echo "🔍 Common solutions:"
+            echo "1. Check if all required environment variables are set"
+            echo "2. Verify eas.json configuration"
+            echo "3. Ensure app.json/app.config.js is properly configured"
+            echo "4. Check for any missing dependencies"
             exit 1
           fi
           
           echo "📦 Checking for APK files..."
-          ls -la *.apk || echo "No APK files found in current directory"
+          ls -la *.apk 2>/dev/null || echo "No APK files found in current directory"
           
           if [ -f "build.apk" ]; then
             echo "✅ APK built successfully!"
             ls -la build.apk
+            echo "📊 APK size: $(du -h build.apk | cut -f1)"
           else
             echo "❌ APK not found!"
             echo "📁 Checking for any APK files:"
-            find . -name "*.apk" -type f || echo "No APK files found anywhere"
+            find . -name "*.apk" -type f 2>/dev/null || echo "No APK files found anywhere"
             exit 1
           fi
 
