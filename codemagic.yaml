@@ -207,12 +207,10 @@ workflows:
           
           echo "👤 Building as user: $(npx expo whoami)"
           
-          # Check if eas.json exists and create if needed
-          if [ ! -f "eas.json" ]; then
-            echo "⚠️ eas.json not found, creating default configuration..."
-            echo '{"cli":{"version":">= 7.8.6"},"build":{"development":{"developmentClient":true,"distribution":"internal"},"preview":{"distribution":"internal"},"production":{"android":{"buildType":"apk"}}},"submit":{"production":{}}}' > eas.json
-            echo "✅ Created eas.json configuration"
-          fi
+          # eas.json already exists in the project with proper configuration
+          echo "✅ Using existing eas.json configuration"
+          echo "📋 EAS configuration preview:"
+          cat eas.json | head -10
           
           # Build APK using EAS with better error handling
           echo "🚀 Starting EAS build..."
