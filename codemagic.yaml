@@ -127,6 +127,13 @@ workflows:
           cd "$PROJECT_DIR"
           echo "🔐 Setting up EAS credentials..."
           
+          # Verify EXPO_TOKEN is present
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "❌ EXPO_TOKEN environment variable is not set!"
+            echo "Please add your Expo token to Codemagic environment variables."
+            exit 1
+          fi
+          
           # Create EAS credentials file
           mkdir -p ~/.expo
           cat > ~/.expo/auth.json << EOF
@@ -135,7 +142,7 @@ workflows:
           }
           EOF
           
-          echo "✅ EAS credentials configured"
+          echo "✅ EAS credentials configured successfully"
 
       - name: Build Android APK with EAS
         script: |
