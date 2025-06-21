@@ -128,11 +128,14 @@ workflows:
           cd "$PROJECT_DIR"
           echo "🔐 Setting up EAS credentials..."
           
-          # Verify EXPO_TOKEN is present
+          # Debug: Check if EXPO_TOKEN is available
+          echo "🔍 Checking EXPO_TOKEN availability..."
           if [ -z "$EXPO_TOKEN" ]; then
             echo "❌ EXPO_TOKEN environment variable is not set!"
-            echo "Please add your Expo token to Codemagic environment variables."
+            echo "Please ensure EXPO_TOKEN is in variable group 'x' in Codemagic"
             exit 1
+          else
+            echo "✅ EXPO_TOKEN is available (length: ${#EXPO_TOKEN})"
           fi
           
           # Set CI environment variable for EAS authentication
@@ -145,6 +148,7 @@ workflows:
             echo "❌ Authentication failed with EXPO_TOKEN"
             echo "Please verify your EXPO_TOKEN is valid and has proper permissions"
             echo "Token should be generated with: expo token:create"
+            echo "Ensure token is in variable group 'x' in Codemagic"
             exit 1
           }
           
