@@ -140,55 +140,100 @@ workflows:
           set -e
           set -x
           cd "$PROJECT_DIR"
-
-          if [ ! -f "keystore_base64.txt" ]; then
-              echo "❌ FATAL: keystore_base64.txt not found in project directory ($PROJECT_DIR)!"
-              ls -la
-              exit 1
-          fi
-
-          echo "✅ Found keystore_base64.txt file."
           
-          mkdir -p android/app
+          echo "🔍 Current directory: $(pwd)"
+          echo "📁 Listing files:"
+          ls -la
           
-          echo "🔑 Decoding keystore from file..."
-          cat keystore_base64.txt | base64 --decode > android/app/"$CM_KEYSTORE_FILENAME"
-          
-          if [ ! -s "android/app/$CM_KEYSTORE_FILENAME" ]; then
-              echo "❌ FATAL: Keystore decoding failed. The output file is empty."
-              echo "This likely means the content of keystore_base64.txt is NOT a valid base64 string."
-              exit 1
-          fi
-          
-          echo "✅ Keystore file created successfully from file."
-          
-          set +x
-          cat >> android/gradle.properties <<EOF
+          # Use existing key.properties from root
+          if [ -f "../../android/key.properties" ]; then
+            echo "✅ Using existing key.properties from root"
+            cp ../../android/key.properties android/
+            cp -r ../../android/keystores android/
+          elif [ -f "keystore_base64.txt" ]; then
+            echo "✅ Found keystore_base64.txt file."
+            mkdir -p android/app
+            echo "🔑 Decoding keystore from file..."
+            cat keystore_base64.txt | base64 --decode > android/app/"$CM_KEYSTORE_FILENAME"
+            
+            if [ ! -s "android/app/$CM_KEYSTORE_FILENAME" ]; then
+                echo "❌ FATAL: Keystore decoding failed."
+                exit 1
+            fi
+            
+            cat >> android/gradle.properties <<EOF
           MYAPP_UPLOAD_STORE_FILE=app/$CM_KEYSTORE_FILENAME
           MYAPP_UPLOAD_STORE_PASSWORD=$CM_KEYSTORE_PASSWORD
           MYAPP_UPLOAD_KEY_ALIAS=$CM_KEY_ALIAS
           MYAPP_UPLOAD_KEY_PASSWORD=$CM_KEY_PASSWORD
-          org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g
           EOF
-          echo "✅ Android keystore and Gradle memory configured"
+          else
+            echo "❌ No keystore configuration found!"
+            exit 1
+          fi
+          
+          # Add Gradle optimization
+          cat >> android/gradle.properties <<EOF
+          org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g
+          org.gradle.daemon=false
+          org.gradle.configureondemand=false
+          org.gradle.parallel=false
+          EOF
+          echo "✅ Android keystore configured"
 
       - name: Build Android APK
         script: |
           cd "$PROJECT_DIR"/android
+          
+          echo "🔍 Checking gradle wrapper..."
           chmod +x ./gradlew
-          ./gradlew clean
-          echo "🔨 Building APK..."
-          ./gradlew assembleRelease --no-daemon --stacktrace
-          echo "✅ Build completed"
-          find . -name "*.apk" | sort
+          
+          echo "🧹 Cleaning project..."
+          ./gradlew clean --no-daemon --stacktrace
+          
+          echo "🔨 Building Release APK..."
+          ./gradlew assembleRelease --no-daemon --stacktrace --info
+          
+          echo "📦 Checking for APK files..."
+          find . -name "*.apk" -type f | sort
+          
+          if [ -f "app/build/outputs/apk/release/app-release.apk" ]; then
+            echo "✅ APK built successfully!"
+            ls -la app/build/outputs/apk/release/
+          else
+            echo "❌ APK not found!"
+            echo "📁 Checking build outputs:"
+            find app/build/outputs -type f | head -20 || echo "No build outputs found"
+            exit 1
+          fi
 
       - name: Copy APK to artifacts directory
         script: |
+          echo "📁 Creating artifacts directory..."
           mkdir -p $CM_BUILD_DIR/artifacts
-          find $PROJECT_DIR/android/app/build/outputs/apk -name "*.apk" -exec cp {} $CM_BUILD_DIR/artifacts/ \;
-          ls -la $CM_BUILD_DIR/artifacts/
-          cp $PROJECT_DIR/android/app/build/outputs/apk/release/app-release.apk $CM_BUILD_DIR/artifacts/pitara-release.apk || echo "Standard APK path not found"
+          
+          echo "🔍 Searching for APK files..."
+          find $PROJECT_DIR/android -name "*.apk" -type f
+          
+          if [ -f "$PROJECT_DIR/android/app/build/outputs/apk/release/app-release.apk" ]; then
+            echo "✅ Copying main APK..."
+            cp "$PROJECT_DIR/android/app/build/outputs/apk/release/app-release.apk" "$CM_BUILD_DIR/artifacts/pitara-release.apk"
+          fi
+          
+          # Copy all APK files found
+          find $PROJECT_DIR/android/app/build/outputs/apk -name "*.apk" -exec cp {} $CM_BUILD_DIR/artifacts/ \; 2>/dev/null || echo "No APK files found in standard location"
+          
+          echo "📦 Final artifacts:"
+          ls -la $CM_BUILD_DIR/artifacts/ || echo "No artifacts directory found"
 
     artifacts:
       - $PROJECT_DIR/android/app/build/outputs/apk/release/*.apk
-      - $CM_BUILD_DIR/artifacts/*.apk 
+      - $CM_BUILD_DIR/artifacts/*.apk
+      
+    publishing:
+      email:
+        recipients:
+          - pitarasupabase@gmail.com
+        notify:
+          success: true
+          failure: true 
