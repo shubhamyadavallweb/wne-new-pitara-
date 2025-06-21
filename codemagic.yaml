@@ -203,33 +203,10 @@ workflows:
           
           echo "👤 Building as user: $(npx expo whoami)"
           
-          # Check if eas.json exists
+          # Check if eas.json exists and create if needed
           if [ ! -f "eas.json" ]; then
             echo "⚠️ eas.json not found, creating default configuration..."
-            cat > eas.json << 'EASJSON'
-{
-  "cli": {
-    "version": ">= 7.8.6"
-  },
-  "build": {
-    "development": {
-      "developmentClient": true,
-      "distribution": "internal"
-    },
-    "preview": {
-      "distribution": "internal"
-    },
-    "production": {
-      "android": {
-        "buildType": "apk"
-      }
-    }
-  },
-  "submit": {
-    "production": {}
-  }
-}
-EASJSON
+            echo '{"cli":{"version":">= 7.8.6"},"build":{"development":{"developmentClient":true,"distribution":"internal"},"preview":{"distribution":"internal"},"production":{"android":{"buildType":"apk"}}},"submit":{"production":{}}}' > eas.json
             echo "✅ Created eas.json configuration"
           fi
           
