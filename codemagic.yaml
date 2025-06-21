@@ -31,9 +31,12 @@ workflows:
 
       - name: Install npm dependencies
         script: |
-          cd "$PROJECT_DIR"
+          echo "📁 Installing dependencies from monorepo root: $(pwd)"
           npm cache clean --force
-          npm ci --legacy-peer-deps --no-audit --no-fund
+          npm install --legacy-peer-deps --no-audit --no-fund
+          echo "📦 Installing workspace dependencies..."
+          cd "$PROJECT_DIR"
+          npm install --legacy-peer-deps --no-audit --no-fund
           
       - name: Install Expo CLI
         script: |
@@ -92,7 +95,10 @@ workflows:
         script: |
           echo "📁 Installing dependencies from monorepo root: $(pwd)"
           npm cache clean --force
-          npm ci --legacy-peer-deps --no-audit --no-fund
+          npm install --legacy-peer-deps --no-audit --no-fund
+          echo "📦 Installing workspace dependencies..."
+          cd "$PROJECT_DIR"
+          npm install --legacy-peer-deps --no-audit --no-fund
           
       - name: Install EAS CLI
         script: |
