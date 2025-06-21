@@ -18,7 +18,7 @@
         "EXPO_PUBLIC_SUPABASE_URL": "https://jdfnkvbfpvzddjtgiovj.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpkZm5rdmJmcHZ6ZGRqdGdpb3ZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk3ODE5OTcsImV4cCI6MjA2NTM1Nzk5N30.zHUA-ESeIWzsfEpkt6O7-nWOBLaBf8MCEQlUb2JcnOI",
         "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "1089697091920-0b2qntimau4d59chhqouu6i8j4u1e6oi.apps.googleusercontent.com",
-        "EXPO_SDK_VERSION": "50.0.0"
+        "EXPO_SDK_VERSION": "51.0.0"
       }
     },
     "production": {
@@ -37,7 +37,7 @@
         "EXPO_PUBLIC_SUPABASE_URL": "https://jdfnkvbfpvzddjtgiovj.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpkZm5rdmJmcHZ6ZGRqdGdpb3ZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk3ODE5OTcsImV4cCI6MjA2NTM1Nzk5N30.zHUA-ESeIWzsfEpkt6O7-nWOBLaBf8MCEQlUb2JcnOI",
         "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "1089697091920-0b2qntimau4d59chhqouu6i8j4u1e6oi.apps.googleusercontent.com",
-        "EXPO_SDK_VERSION": "50.0.0"
+        "EXPO_SDK_VERSION": "51.0.0"
       }
     }
   },
