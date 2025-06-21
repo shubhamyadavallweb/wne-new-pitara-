@@ -39,20 +39,17 @@ module.exports = {
     [
       'expo-build-properties',
       {
-            android: {
-      usesCleartextTraffic: true,
-      enableProguardInReleaseBuilds: true,
-      enableShrinkResourcesInReleaseBuilds: true,
-      enableSeparateBuildPerCPUArchitecture: false,
-      compileSdkVersion: 34,
-      targetSdkVersion: 34,
-      minSdkVersion: 21,
-      gradleVersion: "8.0.1",
-      androidGradlePluginVersion: "8.0.0",
-      kotlinVersion: "1.8.10"
-    },
+        android: {
+          usesCleartextTraffic: true,
+          enableProguardInReleaseBuilds: true,
+          enableShrinkResourcesInReleaseBuilds: true,
+          compileSdkVersion: 34,
+          targetSdkVersion: 34,
+          minSdkVersion: 23,
+          buildToolsVersion: "34.0.0"
+        },
         ios: {
-          deploymentTarget: '15.1'
+          deploymentTarget: '13.4'
         }
       }
     ]
@@ -71,7 +68,7 @@ module.exports = {
     }
   },
   owner: "pmp16",
-  sdkVersion: "50.0.0",
+  sdkVersion: "51.0.0",
   experiments: {
     tsconfigPaths: true
   }
