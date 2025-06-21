@@ -61,7 +61,6 @@
   "devDependencies": {
     "@babel/core": "^7.20.0",
     "@expo/config-plugins": "~7.8.0",
-    "@expo/metro-config": "~0.20.15",
     "babel-preset-expo": "~10.0.0",
     "expo-dev-client": "~3.3.12",
     "metro": "~0.80.3",

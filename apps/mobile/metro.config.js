@@ -1,5 +1,5 @@
 // Learn more https://docs.expo.io/guides/customizing-metro
-const { getDefaultConfig } = require('@expo/metro-config');
+const { getDefaultConfig } = require('expo/metro-config');
 const path = require('path');
 
 // Fix nativewind module loading - Make it optional
@@ -15,7 +15,7 @@ const projectRoot = __dirname;
 const monorepoRoot = path.resolve(projectRoot, '../..');
 
 /** @type {import('expo/metro-config').MetroConfig} */
-// Use getDefaultConfig properly to extend @expo/metro-config
+// Use getDefaultConfig properly to extend expo/metro-config
 const config = getDefaultConfig(__dirname);
 
 // 1. Watch all files in the monorepo

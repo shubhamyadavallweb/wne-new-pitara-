@@ -99,6 +99,10 @@ workflows:
           echo "📦 Installing workspace dependencies..."
           cd "$PROJECT_DIR"
           npm install --legacy-peer-deps --no-audit --no-fund
+          echo "🔗 Debug: Checking metro-config availability..."
+          npm ls @expo/metro-config || echo "@expo/metro-config not found"
+          node -e "console.log('Testing metro-config:', require.resolve('@expo/metro-config'))" || echo "Cannot resolve @expo/metro-config"
+          node -e "console.log('Testing expo/metro-config:', require.resolve('expo/metro-config'))" || echo "Cannot resolve expo/metro-config"
           
       - name: Install EAS CLI
         script: |
