@@ -134,13 +134,22 @@ workflows:
             exit 1
           fi
           
-          # Create EAS credentials file
-          mkdir -p ~/.expo
-          cat > ~/.expo/auth.json << EOF
-          {
-            "sessionSecret": "$EXPO_TOKEN"
+          # Set EXPO_TOKEN as environment variable for EAS CLI
+          export EXPO_TOKEN="$EXPO_TOKEN"
+          
+          # Login to EAS using the token
+          echo "🔑 Authenticating with EAS..."
+          npx expo login --non-interactive || {
+            echo "❌ Failed to authenticate with Expo"
+            echo "Please verify your EXPO_TOKEN is valid"
+            exit 1
           }
-          EOF
+          
+          # Verify authentication
+          npx expo whoami || {
+            echo "❌ Authentication verification failed"
+            exit 1
+          }
           
           echo "✅ EAS credentials configured successfully"
 
@@ -150,8 +159,23 @@ workflows:
           
           echo "🔨 Building Android APK using EAS..."
           
-          # Build APK using EAS
-          eas build --platform android --profile production --non-interactive --local --output build.apk
+          # Ensure EXPO_TOKEN is available for this step
+          export EXPO_TOKEN="$EXPO_TOKEN"
+          
+          # Verify we're still authenticated
+          echo "🔍 Verifying authentication..."
+          npx expo whoami || {
+            echo "❌ Not authenticated with Expo"
+            exit 1
+          }
+          
+          # Build APK using EAS with better error handling
+          echo "🚀 Starting EAS build..."
+          if ! eas build --platform android --profile production --non-interactive --local --output build.apk; then
+            echo "❌ EAS build failed!"
+            echo "📋 Build logs above should contain error details"
+            exit 1
+          fi
           
           echo "📦 Checking for APK files..."
           ls -la *.apk || echo "No APK files found in current directory"
