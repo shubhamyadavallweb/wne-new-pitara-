@@ -17,3 +17,5 @@ Build trigger: 2025-06-21 14:50 - Force fresh build after EXPO_TOKEN update in C
 Build trigger: 2025-06-21 14:55 - Added direct EXPO_TOKEN value in YAML as fallback to bypass Codemagic variable issues
 
 Build trigger: 2025-06-21 15:00 - Fixed eas.json configuration by removing invalid keystore settings for local builds
+
+Build trigger: 2025-06-21 15:05 - Added credentialsSource local to avoid interactive keystore generation
