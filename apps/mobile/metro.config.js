@@ -25,7 +25,7 @@ const config = getDefaultConfig(__dirname);
 // Fix for Expo SDK 51 Flow type issues - Enhanced transformer
 config.transformer = {
   ...config.transformer,
-  babelTransformerPath: path.resolve(__dirname, 'babel-transformer.js'),
+  babelTransformerPath: require.resolve('@react-native/metro-babel-transformer'),
   unstable_allowRequireContext: true,
   // Disable ES6 transforms and add Flow handling
   unstable_disableES6Transforms: false,
@@ -54,22 +54,29 @@ config.resolver = {
     /.*\.flow$/,
   ],
   resolveRequest: (context, moduleName, platform) => {
-    // Handle missing private React Native specs
+    // Handle missing private React Native specs and provide empty implementations
     if (moduleName.includes('src/private/specs/') || 
-        moduleName.includes('Libraries/') && moduleName.includes('Native') ||
-        moduleName === '../../../src/private/specs/modules/NativeAccessibilityInfo' ||
-        moduleName.includes('NativeDialogManagerAndroid')) {
-      return {
-        type: 'empty',
-      };
-    }
-    
-    // Handle React Native 0.74 private module imports
-    if (moduleName.startsWith('../../../src/private/')) {
-      // Return an empty module for all private specs
+        moduleName.includes('../../../src/private/specs/modules/')) {
+      
+      // Check if it's specifically NativeAccessibilityInfo or other known modules
+      if (moduleName.includes('NativeAccessibilityInfo')) {
+        return {
+          type: 'sourceFile',
+          filePath: path.resolve(__dirname, 'empty-modules/NativeAccessibilityInfo.js'),
+        };
+      }
+      
+      // For other private specs, return empty module
       return {
         type: 'sourceFile',
         filePath: path.resolve(__dirname, 'empty-module.js'),
+      };
+    }
+    
+    // Handle other native modules that might be missing
+    if (moduleName.includes('NativeDialogManagerAndroid')) {
+      return {
+        type: 'empty',
       };
     }
     

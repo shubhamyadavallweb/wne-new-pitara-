@@ -14,9 +14,12 @@
     "build:preview": "npm run build:preview --workspace=apps/mobile",
     "build:production": "npm run build:production --workspace=apps/mobile",
     "prebuild": "npm run prebuild --workspace=apps/mobile",
-    "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules && npm install"
+    "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules && npm install",
+    "postinstall": "patch-package"
   },
   "devDependencies": {
+    "@types/react-native": "^0.73.0",
+    "patch-package": "^8.0.0",
     "typescript": "^5.3.3"
   }
 }
