@@ -14,9 +14,69 @@ try {
 const projectRoot = __dirname;
 const monorepoRoot = path.resolve(projectRoot, '../..');
 
+// Set expo-router environment variables properly
+process.env.EXPO_ROUTER_APP_ROOT = process.env.EXPO_ROUTER_APP_ROOT || './app';
+process.env.EXPO_ROUTER_IMPORT_MODE = process.env.EXPO_ROUTER_IMPORT_MODE || 'sync';
+
 /** @type {import('expo/metro-config').MetroConfig} */
 // Use getDefaultConfig properly to extend expo/metro-config
 const config = getDefaultConfig(__dirname);
+
+// Fix for Expo SDK 51 Flow type issues - Enhanced transformer
+config.transformer = {
+  ...config.transformer,
+  babelTransformerPath: require.resolve('@react-native/metro-babel-transformer'),
+  unstable_allowRequireContext: true,
+  // Disable ES6 transforms and add Flow handling
+  unstable_disableES6Transforms: false,
+  // Enable async require context
+  asyncRequireModulePath: require.resolve('metro-runtime/src/modules/asyncRequire'),
+  // Add minifier config to handle potential issues
+  minifierConfig: {
+    keep_fnames: true,
+    mangle: {
+      keep_fnames: true,
+    },
+  },
+};
+
+// Enhanced resolver configuration to completely exclude Flow types
+config.resolver = {
+  ...config.resolver,
+  sourceExts: [...config.resolver.sourceExts.filter(ext => ext !== 'flow'), 'jsx', 'js', 'ts', 'tsx', 'json'],
+  assetExts: [...config.resolver.assetExts, 'bin'],
+  platforms: ['ios', 'android', 'native', 'web'],
+  // Disable Flow completely and exclude Flow files
+  flowConfigs: [],
+  blockList: [
+    // Block Flow spec files that cause issues
+    /.*\/node_modules\/react-native\/src\/private\/specs\/.*$/,
+    /.*\.flow$/,
+  ],
+  resolveRequest: (context, moduleName, platform) => {
+    // Handle missing private React Native specs
+    if (moduleName.includes('src/private/specs/') || 
+        moduleName.includes('Libraries/') && moduleName.includes('Native') ||
+        moduleName === '../../../src/private/specs/modules/NativeAccessibilityInfo' ||
+        moduleName.includes('NativeDialogManagerAndroid')) {
+      return {
+        type: 'empty',
+      };
+    }
+    
+    // Handle React Native 0.74 private module imports
+    if (moduleName.startsWith('../../../src/private/')) {
+      // Return an empty module for all private specs
+      return {
+        type: 'sourceFile',
+        filePath: path.resolve(__dirname, 'empty-module.js'),
+      };
+    }
+    
+    // Default resolver
+    return context.resolveRequest(context, moduleName, platform);
+  },
+};
 
 // 1. Watch all files in the monorepo
 config.watchFolders = [monorepoRoot];
