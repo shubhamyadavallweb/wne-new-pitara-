@@ -25,7 +25,7 @@ const config = getDefaultConfig(__dirname);
 // Fix for Expo SDK 51 Flow type issues - Enhanced transformer
 config.transformer = {
   ...config.transformer,
-  babelTransformerPath: require.resolve('@react-native/metro-babel-transformer'),
+  babelTransformerPath: path.resolve(__dirname, 'babel-transformer.js'),
   unstable_allowRequireContext: true,
   // Disable ES6 transforms and add Flow handling
   unstable_disableES6Transforms: false,
